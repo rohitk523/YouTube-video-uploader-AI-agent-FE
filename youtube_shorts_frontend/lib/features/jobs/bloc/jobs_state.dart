@@ -13,7 +13,7 @@ class JobsInitial extends JobsState {}
 class JobsLoading extends JobsState {}
 
 class JobsListLoaded extends JobsState {
-  final List<JobResponse> jobs;
+  final List<JobListItem> jobs;
 
   const JobsListLoaded(this.jobs);
 

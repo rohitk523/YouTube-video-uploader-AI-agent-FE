@@ -66,7 +66,7 @@ class _JobsListScreenState extends State<JobsListScreen> {
     );
   }
 
-  Widget _buildJobsList(List<JobResponse> jobs) {
+  Widget _buildJobsList(List<JobListItem> jobs) {
     return RefreshIndicator(
       onRefresh: () async {
         context.read<JobsBloc>().add(RefreshJobsEvent());
@@ -82,7 +82,7 @@ class _JobsListScreenState extends State<JobsListScreen> {
     );
   }
 
-  Widget _buildJobCard(JobResponse job) {
+  Widget _buildJobCard(JobListItem job) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12.0),
       elevation: 3,
@@ -90,7 +90,7 @@ class _JobsListScreenState extends State<JobsListScreen> {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => JobDetailsScreen(jobId: job.jobId),
+              builder: (context) => JobDetailsScreen(jobId: job.id),
             ),
           );
         },
@@ -104,7 +104,7 @@ class _JobsListScreenState extends State<JobsListScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      job.outputTitle,
+                      job.title,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -114,12 +114,12 @@ class _JobsListScreenState extends State<JobsListScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _buildStatusChip(job.status),
+                  _buildStatusChip(job.status.name),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
-                'Job ID: ${job.jobId}',
+                'Job ID: ${job.id}',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey.shade600,
@@ -133,57 +133,19 @@ class _JobsListScreenState extends State<JobsListScreen> {
                   color: Colors.grey.shade600,
                 ),
               ),
-              if (job.updatedAt != job.createdAt) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Updated: ${_formatDateTime(job.updatedAt)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
               const SizedBox(height: 12),
               _buildProgressSection(job),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildInfoChip(
-                      Icons.videocam,
-                      'Video ID',
-                      job.videoUploadId,
-                      Colors.red.shade100,
-                      Colors.red.shade700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildInfoChip(
-                      Icons.description,
-                      'Transcript ID',
-                      job.transcriptUploadId,
-                      Colors.blue.shade100,
-                      Colors.blue.shade700,
-                    ),
-                  ),
-                ],
-              ),
-              if (job.youtubeUrl != null) ...[
-                const SizedBox(height: 12),
-                _buildYouTubeSection(job.youtubeUrl!),
-              ],
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  if (_canRetry(job.status))
+                  if (_canRetry(job.status.name))
                     TextButton.icon(
                       onPressed: () => _showRetryDialog(job),
                       icon: const Icon(Icons.refresh, size: 18),
                       label: const Text('Retry'),
                     ),
-                  if (_canDelete(job.status))
+                  if (_canDelete(job.status.name))
                     TextButton.icon(
                       onPressed: () => _showDeleteDialog(job),
                       icon: const Icon(Icons.delete, size: 18),
@@ -196,11 +158,11 @@ class _JobsListScreenState extends State<JobsListScreen> {
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => JobDetailsScreen(jobId: job.jobId),
+                          builder: (context) => JobDetailsScreen(jobId: job.id),
                         ),
                       );
                     },
-                    icon: const Icon(Icons.info_outline, size: 18),
+                    icon: const Icon(Icons.arrow_forward, size: 18),
                     label: const Text('Details'),
                   ),
                 ],
@@ -268,126 +230,58 @@ class _JobsListScreenState extends State<JobsListScreen> {
     );
   }
 
-  Widget _buildProgressSection(JobResponse job) {
-    if (job.status.toLowerCase() == 'processing') {
-      // Show an indeterminate progress bar for processing jobs
+  Widget _buildProgressSection(JobListItem job) {
+    if (job.status.name.toLowerCase() == 'processing') {
+      // Show progress bar with actual progress if available
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Processing...',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.blue.shade700,
-              fontWeight: FontWeight.w500,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Processing...',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.blue.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                '${job.progress}%',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.blue.shade700,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           LinearProgressIndicator(
+            value: job.progress / 100.0,
             backgroundColor: Colors.blue.shade50,
             valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
           ),
         ],
       );
-    }
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildInfoChip(
-    IconData icon,
-    String label,
-    String value,
-    Color backgroundColor,
-    Color textColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    } else if (job.status.name.toLowerCase() == 'completed') {
+      return Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 14, color: textColor),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: textColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
+          Icon(Icons.check_circle, size: 16, color: Colors.green.shade600),
+          const SizedBox(width: 4),
           Text(
-            value.length > 8 ? '${value.substring(0, 8)}...' : value,
+            'Completed',
             style: TextStyle(
               fontSize: 12,
-              color: textColor,
-              fontWeight: FontWeight.bold,
+              color: Colors.green.shade700,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildYouTubeSection(String youtubeUrl) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red.shade200),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.play_circle_filled, color: Colors.red.shade600),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Published to YouTube',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red.shade700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  youtubeUrl,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.red.shade600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () {
-              // TODO: Open YouTube URL
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Opening YouTube...')),
-              );
-            },
-            icon: Icon(Icons.open_in_new, color: Colors.red.shade600),
-            constraints: const BoxConstraints(),
-            padding: EdgeInsets.zero,
-          ),
-        ],
-      ),
-    );
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildEmptyState() {
@@ -519,13 +413,13 @@ class _JobsListScreenState extends State<JobsListScreen> {
     return ['failed', 'completed'].contains(status.toLowerCase());
   }
 
-  void _showRetryDialog(JobResponse job) {
+  void _showRetryDialog(JobListItem job) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Retry Job'),
         content: Text(
-          'Are you sure you want to retry processing for "${job.outputTitle}"?',
+          'Are you sure you want to retry processing for "${job.title}"?',
         ),
         actions: [
           TextButton(
@@ -550,13 +444,13 @@ class _JobsListScreenState extends State<JobsListScreen> {
     );
   }
 
-  void _showDeleteDialog(JobResponse job) {
+  void _showDeleteDialog(JobListItem job) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Job'),
         content: Text(
-          'Are you sure you want to delete the job "${job.outputTitle}"? This action cannot be undone.',
+          'Are you sure you want to delete the job "${job.title}"? This action cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -566,7 +460,7 @@ class _JobsListScreenState extends State<JobsListScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              context.read<JobsBloc>().add(DeleteJobEvent(job.jobId));
+              context.read<JobsBloc>().add(DeleteJobEvent(job.id));
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade600,

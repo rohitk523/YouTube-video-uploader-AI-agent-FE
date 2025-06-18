@@ -35,42 +35,34 @@ enum JobStatus {
 class CreateJobRequest extends Equatable {
   final String videoUploadId;
   final String transcriptUploadId;
-  final String outputTitle;
-  final String? outputDescription;
-  final String? voice;
-  final bool autoUpload;
+  final String title;
+  final String description;
+  final String voice;
+  final List<String> tags;
 
   const CreateJobRequest({
     required this.videoUploadId,
     required this.transcriptUploadId,
-    required this.outputTitle,
-    this.outputDescription,
-    this.voice,
-    required this.autoUpload,
+    required this.title,
+    required this.description,
+    required this.voice,
+    required this.tags,
   });
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = {
+    return {
       'video_upload_id': videoUploadId,
       'transcript_upload_id': transcriptUploadId,
-      'output_title': outputTitle,
-      'auto_upload': autoUpload,
+      'title': title,
+      'description': description,
+      'voice': voice,
+      'tags': tags,
     };
-    
-    if (outputDescription != null) {
-      data['output_description'] = outputDescription;
-    }
-    
-    if (voice != null) {
-      data['voice'] = voice;
-    }
-    
-    return data;
   }
 
   @override
   List<Object?> get props => [
-    videoUploadId, transcriptUploadId, outputTitle, outputDescription, voice, autoUpload
+    videoUploadId, transcriptUploadId, title, description, voice, tags
   ];
 }
 
@@ -290,16 +282,16 @@ class JobResponse extends Equatable {
   });
 
   factory JobResponse.fromJson(Map<String, dynamic> json) => JobResponse(
-    jobId: json['job_id'] as String,
+    jobId: json['id'] as String,
     videoUploadId: json['video_upload_id'] as String,
     transcriptUploadId: json['transcript_upload_id'] as String,
-    outputTitle: json['output_title'] as String,
-    outputDescription: json['output_description'] as String?,
+    outputTitle: json['title'] as String,
+    outputDescription: json['description'] as String?,
     voice: json['voice'] as String?,
-    autoUpload: json['auto_upload'] as bool,
+    autoUpload: json['auto_upload'] as bool? ?? false,
     status: json['status'] as String,
-    progressPercentage: json['progress_percentage'] != null 
-      ? (json['progress_percentage'] as num).toDouble() 
+    progressPercentage: json['progress'] != null 
+      ? (json['progress'] as num).toDouble() 
       : null,
     errorMessage: json['error_message'] as String?,
     youtubeUrl: json['youtube_url'] as String?,

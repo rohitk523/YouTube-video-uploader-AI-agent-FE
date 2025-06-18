@@ -8,7 +8,7 @@ abstract class JobsRepository {
   Future<JobResponse> createJob(CreateJobRequest request);
   Future<JobResponse> getJobDetails(String jobId);
   Future<JobStatusResponse> getJobStatus(String jobId);
-  Future<List<JobResponse>> getJobs({
+  Future<List<JobListItem>> getJobs({
     int? limit,
     int? offset,
   });
@@ -64,7 +64,7 @@ class JobsRepositoryImpl implements JobsRepository {
   }
   
   @override
-  Future<List<JobResponse>> getJobs({
+  Future<List<JobListItem>> getJobs({
     int? limit,
     int? offset,
   }) async {
@@ -84,9 +84,10 @@ class JobsRepositoryImpl implements JobsRepository {
         queryParameters: queryParameters,
       );
       
-      // Expect response to be a list of jobs
-      final jobsList = response.data as List<dynamic>;
-      return jobsList.map((job) => JobResponse.fromJson(job)).toList();
+      // Backend returns wrapped response: { "jobs": [...], "total": 25, ... }
+      final responseData = response.data as Map<String, dynamic>;
+      final jobsList = responseData['jobs'] as List<dynamic>;
+      return jobsList.map((job) => JobListItem.fromJson(job)).toList();
     } catch (e) {
       throw _handleError(e);
     }

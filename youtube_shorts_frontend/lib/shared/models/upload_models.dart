@@ -22,7 +22,7 @@ class UploadResponse extends Equatable {
 
   factory UploadResponse.fromJson(Map<String, dynamic> json) => UploadResponse(
     id: json['id'] as String,
-    uploadId: json['upload_id'] ?? json['id'] as String,
+    uploadId: (json['upload_id'] as String?) ?? (json['id'] as String),
     filename: json['filename'] as String,
     originalFilename: json['original_filename'] as String,
     fileType: json['file_type'] as String,
