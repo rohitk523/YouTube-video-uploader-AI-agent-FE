@@ -1,44 +1,87 @@
 class ApiConstants {
   // Base URLs
-  static const String developmentBaseUrl = 'http://localhost:8000';
-  static const String productionBaseUrl = 'https://your-production-domain.com';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:8000',
+  );
   
-  // Use development URL by default - change for production
-  static const String baseUrl = developmentBaseUrl;
   static const String apiVersion = 'v1';
   static String get apiBaseUrl => '$baseUrl/api/$apiVersion';
   
   // Authentication endpoints
-  static const String register = '/oauth/register';
-  static const String token = '/oauth/token';
-  static const String refreshToken = '/oauth/token/refresh';
-  static const String userInfo = '/oauth/userinfo';
-  static const String updateProfile = '/oauth/profile';
-  static const String changePassword = '/oauth/change-password';
-  static const String logout = '/oauth/logout';
+  static const String authEndpoint = '/oauth';
+  static const String loginEndpoint = '$authEndpoint/token';
+  static const String registerEndpoint = '$authEndpoint/register';
+  static const String refreshEndpoint = '$authEndpoint/token/refresh';
+  static const String userInfoEndpoint = '$authEndpoint/userinfo';
+  static const String logoutEndpoint = '$authEndpoint/logout';
+  
+  // Legacy auth endpoint names (for backward compatibility)
+  static const String register = registerEndpoint;
+  static const String token = loginEndpoint;
+  static const String refreshToken = refreshEndpoint;
+  static const String userInfo = userInfoEndpoint;
+  static const String updateProfile = '$authEndpoint/profile';
+  static const String changePassword = '$authEndpoint/change-password';
+  static const String logout = logoutEndpoint;
   
   // Upload endpoints
-  static const String uploadConfig = '/upload/config/check';
-  static const String uploadVideo = '/upload/video';
-  static const String uploadTranscriptText = '/upload/transcript-text';
-  static const String uploadTranscriptFile = '/upload/transcript-file';
-  static String getUploadDetails(String uploadId) => '/upload/$uploadId';
-  static String downloadUpload(String uploadId) => '/upload/$uploadId/download';
-  static String deleteUpload(String uploadId) => '/upload/$uploadId';
+  static const String uploadEndpoint = '/upload';
+  static const String videoUploadEndpoint = '$uploadEndpoint/video';
+  static const String transcriptUploadEndpoint = '$uploadEndpoint/transcript-text';
   
-  // Job endpoints
-  static const String createJob = '/jobs/create';
-  static const String listJobs = '/jobs';
-  static String getJob(String jobId) => '/jobs/$jobId';
-  static String getJobStatus(String jobId) => '/jobs/$jobId/status';
-  static String deleteJob(String jobId) => '/jobs/$jobId';
-  static String downloadJobVideo(String jobId) => '/jobs/$jobId/download';
+  // Legacy upload endpoint names
+  static const String uploadConfig = '$uploadEndpoint/config/check';
+  static const String uploadVideo = videoUploadEndpoint;
+  static const String uploadTranscriptText = transcriptUploadEndpoint;
+  static const String uploadTranscriptFile = '$uploadEndpoint/transcript-file';
+  
+  // Upload helper methods
+  static String getUploadDetails(String uploadId) => '$uploadEndpoint/$uploadId';
+  static String downloadUpload(String uploadId) => '$uploadEndpoint/$uploadId/download';
+  static String deleteUpload(String uploadId) => '$uploadEndpoint/$uploadId';
+  
+  // Jobs endpoints
+  static const String jobsEndpoint = '/jobs';
+  static const String createJobEndpoint = '$jobsEndpoint/create';
+  
+  // Legacy job endpoint names
+  static const String createJob = createJobEndpoint;
+  static const String listJobs = jobsEndpoint;
+  
+  // Job helper methods
+  static String getJob(String jobId) => '$jobsEndpoint/$jobId';
+  static String getJobStatus(String jobId) => '$jobsEndpoint/$jobId/status';
+  static String deleteJob(String jobId) => '$jobsEndpoint/$jobId';
+  static String downloadJobVideo(String jobId) => '$jobsEndpoint/$jobId/download';
   
   // YouTube endpoints
-  static const String voices = '/youtube/voices';
-  static const String youtubeInfo = '/youtube/info';
-  static String downloadProcessedVideo(String jobId) => '/youtube/download/$jobId';
-  static const String uploadToYoutube = '/youtube/upload-from-job';
+  static const String youtubeEndpoint = '/youtube';
+  static const String downloadEndpoint = '$youtubeEndpoint/download';
+  static const String uploadToYoutubeEndpoint = '$youtubeEndpoint/upload-from-job';
+  
+  // Legacy YouTube endpoint names
+  static const String voices = '$youtubeEndpoint/voices';
+  static const String youtubeInfo = '$youtubeEndpoint/info';
+  static const String uploadToYoutube = uploadToYoutubeEndpoint;
+  
+  // YouTube helper methods
+  static String downloadProcessedVideo(String jobId) => '$youtubeEndpoint/download/$jobId';
+  
+  // Videos endpoints (NEW)
+  static const String videosEndpoint = '/videos';
+  
+  // System endpoints
+  static const String healthEndpoint = '/health';
+  static const String infoEndpoint = '/info';
+  
+  // File size limits
+  static const int maxVideoSizeMB = 100;
+  static const int maxTranscriptSizeMB = 10;
+  
+  // Supported formats
+  static const List<String> supportedVideoFormats = ['mp4', 'mov', 'avi', 'mkv'];
+  static const List<String> supportedTranscriptFormats = ['txt', 'srt'];
   
   // Request timeouts
   static const Duration defaultTimeout = Duration(seconds: 30);

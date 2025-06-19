@@ -7,6 +7,7 @@ import '../../features/jobs/screens/jobs_list_screen.dart';
 import '../../features/jobs/screens/job_details_screen.dart';
 import '../../features/upload/bloc/upload_bloc.dart';
 import '../../features/jobs/bloc/jobs_bloc.dart';
+import '../../features/videos/bloc/video_bloc.dart';
 import '../splash/splash_screen.dart';
 import '../home/home_screen.dart';
 import '../di/service_locator.dart';
@@ -55,6 +56,9 @@ class AppRouter {
               ),
               BlocProvider<JobsBloc>(
                 create: (_) => getIt<JobsBloc>(),
+              ),
+              BlocProvider<VideoBloc>(
+                create: (_) => getIt<VideoBloc>(),
               ),
             ],
             child: const CreateShortScreen(),

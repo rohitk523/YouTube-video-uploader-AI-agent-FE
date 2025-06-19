@@ -6,6 +6,8 @@ import '../../features/jobs/repository/jobs_repository.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/upload/bloc/upload_bloc.dart';
 import '../../features/jobs/bloc/jobs_bloc.dart';
+import '../../features/videos/repository/video_repository.dart';
+import '../../features/videos/bloc/video_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -27,6 +29,11 @@ class ServiceLocator {
       () => JobsRepositoryImpl(getIt<ApiClient>()),
     );
     
+    // Video related
+    getIt.registerLazySingleton<VideoRepository>(
+      () => VideoRepository(getIt<ApiClient>()),
+    );
+    
     // BLoCs - registered as factories so each screen gets a fresh instance if needed
     getIt.registerFactory<AuthBloc>(
       () => AuthBloc(getIt<AuthRepository>()),
@@ -38,6 +45,10 @@ class ServiceLocator {
     
     getIt.registerFactory<JobsBloc>(
       () => JobsBloc(getIt<JobsRepository>()),
+    );
+    
+    getIt.registerFactory<VideoBloc>(
+      () => VideoBloc(getIt<VideoRepository>()),
     );
   }
   

@@ -3,7 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/bloc/auth_event.dart';
 import '../../features/auth/bloc/auth_state.dart';
+import '../../features/videos/bloc/video_bloc.dart';
+import '../../features/videos/screens/video_library_screen.dart';
 import '../utils/app_router.dart';
+import '../di/service_locator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -83,10 +86,12 @@ class _HomeScreenState extends State<HomeScreen> {
           children: const [
             _HomeTab(),
             _JobsTab(),
+            _VideosTab(),
             _ProfileTab(),
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
           currentIndex: _currentIndex,
           onTap: (index) {
             setState(() {
@@ -101,6 +106,10 @@ class _HomeScreenState extends State<HomeScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.work),
               label: 'Jobs',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.video_library),
+              label: 'Videos',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person),
@@ -328,6 +337,18 @@ class _JobsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text('Jobs Tab - Will show job list'),
+    );
+  }
+}
+
+class _VideosTab extends StatelessWidget {
+  const _VideosTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => getIt<VideoBloc>(),
+      child: const VideoLibraryScreen(),
     );
   }
 }
