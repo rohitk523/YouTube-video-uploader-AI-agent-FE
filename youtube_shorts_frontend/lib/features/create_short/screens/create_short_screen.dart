@@ -8,6 +8,7 @@ import 'dart:html' as html;
 import '../../../core/constants/api_constants.dart';
 import '../../../shared/models/upload_models.dart';
 import '../../../shared/models/job_models.dart';
+import '../../../shared/models/video_models.dart';
 import '../../../shared/widgets/video_preview_widget.dart';
 import '../../upload/bloc/upload_bloc.dart';
 import '../../upload/bloc/upload_event.dart';
@@ -15,6 +16,7 @@ import '../../upload/bloc/upload_state.dart';
 import '../../jobs/bloc/jobs_bloc.dart';
 import '../../jobs/bloc/jobs_event.dart';
 import '../../jobs/bloc/jobs_state.dart';
+import '../../videos/widgets/video_selection_widget.dart';
 
 class CreateShortScreen extends StatefulWidget {
   const CreateShortScreen({super.key});
@@ -35,6 +37,8 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
   PlatformFile? _selectedTranscriptPlatformFile;
   UploadResponse? _videoUploadResponse;
   UploadResponse? _transcriptUploadResponse;
+  S3VideoModel? _selectedS3Video;
+  bool _showUploadSection = false;
   
   bool _isTranscriptFromText = true;
   bool _autoUploadToYoutube = false;
@@ -138,203 +142,231 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Video Upload',
+              'Video Selection',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 16),
-            if (_selectedVideoPlatformFile == null) ...[
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: InkWell(
-                  onTap: _pickVideoFile,
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.video_call,
-                        size: 64,
-                        color: Colors.grey,
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Tap to select video file',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Supported formats: MP4, MOV, AVI',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ] else ...[
-              // For web, show file info; for mobile show video preview
-              if (kIsWeb) ...[
-                Container(
-                  height: 200,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.video_file,
-                        size: 48,
-                        color: Colors.green,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _selectedVideoPlatformFile!.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${(_selectedVideoPlatformFile!.size / 1024 / 1024).toStringAsFixed(2)} MB',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ] else if (_selectedVideoFile != null) ...[
-                VideoPreviewWidget(
-                  videoFile: _selectedVideoFile!,
-                  height: 200,
-                  onRemove: _removeVideoFile,
-                  showControls: true,
-                ),
-              ],
-              const SizedBox(height: 8),
-              if (!kIsWeb && _selectedVideoFile != null)
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.video_file, color: Colors.grey.shade600, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _selectedVideoFile!.path.split('/').last,
-                          style: const TextStyle(fontSize: 12),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-            const SizedBox(height: 16),
-            BlocBuilder<UploadBloc, UploadState>(
-              builder: (context, state) {
-                // Show progress if currently uploading this specific item
-                if (state is UploadProgress && _selectedVideoPlatformFile != null && _videoUploadResponse == null) {
-                  return Column(
-                    children: [
-                      LinearProgressIndicator(value: state.progress),
-                      const SizedBox(height: 8),
-                      Text(state.message ?? 'Uploading video...'),
-                    ],
-                  );
-                }
-                
-                // If already uploaded, show success state
-                if (_videoUploadResponse != null) {
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.green.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle, color: Colors.green.shade600),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Video uploaded successfully!',
-                                      style: TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                    Text(
-                                      _videoUploadResponse!.filename,
-                                      style: const TextStyle(fontSize: 12),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _videoUploadResponse = null;
-                            _selectedVideoFile = null;
-                            _selectedVideoPlatformFile = null;
-                          });
-                        },
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('Re-upload'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey.shade600,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                      ),
-                    ],
-                  );
-                }
-                
-                // Show upload button if file selected but not uploaded
-                return ElevatedButton.icon(
-                  onPressed: _selectedVideoPlatformFile != null ? _uploadVideo : null,
-                  icon: const Icon(Icons.cloud_upload),
-                  label: const Text('Upload Video'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade600,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                );
+            // Video Selection Widget
+            VideoSelectionWidget(
+              selectedVideo: _selectedS3Video,
+              onVideoSelected: (video) {
+                setState(() {
+                  _selectedS3Video = video;
+                  if (video != null) {
+                    // Clear uploaded video since we're using S3 video
+                    _videoUploadResponse = null;
+                    _selectedVideoFile = null;
+                    _selectedVideoPlatformFile = null;
+                    _showUploadSection = false;
+                  }
+                });
+              },
+              onUploadNewVideo: () {
+                setState(() {
+                  _selectedS3Video = null;
+                  _showUploadSection = true;
+                });
+                _pickVideoFile();
               },
             ),
+            if (_showUploadSection && _selectedS3Video == null) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+              if (_selectedVideoPlatformFile == null && _videoUploadResponse == null) ...[
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: InkWell(
+                    onTap: _pickVideoFile,
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.video_call,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Tap to select video file',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Supported formats: MP4, MOV, AVI',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else if (_selectedVideoPlatformFile != null) ...[
+                // For web, show file info; for mobile show video preview
+                if (kIsWeb) ...[
+                  Container(
+                    height: 200,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.video_file,
+                          size: 48,
+                          color: Colors.green,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _selectedVideoPlatformFile!.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${(_selectedVideoPlatformFile!.size / 1024 / 1024).toStringAsFixed(2)} MB',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (_selectedVideoFile != null) ...[
+                  VideoPreviewWidget(
+                    videoFile: _selectedVideoFile!,
+                    height: 200,
+                    onRemove: _removeVideoFile,
+                    showControls: true,
+                  ),
+                ],
+                const SizedBox(height: 8),
+                if (!kIsWeb && _selectedVideoFile != null)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.video_file, color: Colors.grey.shade600, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _selectedVideoFile!.path.split('/').last,
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+              const SizedBox(height: 16),
+              BlocBuilder<UploadBloc, UploadState>(
+                builder: (context, state) {
+                  // Show progress if currently uploading this specific item
+                  if (state is UploadProgress && _selectedVideoPlatformFile != null && _videoUploadResponse == null) {
+                    return Column(
+                      children: [
+                        LinearProgressIndicator(value: state.progress),
+                        const SizedBox(height: 8),
+                        Text(state.message ?? 'Uploading video...'),
+                      ],
+                    );
+                  }
+                  
+                  // If already uploaded, show success state
+                  if (_videoUploadResponse != null) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.check_circle, color: Colors.green.shade600),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Video uploaded successfully!',
+                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      Text(
+                                        _videoUploadResponse!.filename,
+                                        style: const TextStyle(fontSize: 12),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _videoUploadResponse = null;
+                              _selectedVideoFile = null;
+                              _selectedVideoPlatformFile = null;
+                            });
+                          },
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Re-upload'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey.shade600,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  
+                  // Show upload button if file selected but not uploaded
+                  return ElevatedButton.icon(
+                    onPressed: _selectedVideoPlatformFile != null ? _uploadVideo : null,
+                    icon: const Icon(Icons.cloud_upload),
+                    label: const Text('Upload Video'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -761,8 +793,9 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
     return BlocBuilder<JobsBloc, JobsState>(
       builder: (context, state) {
         final isLoading = state is JobsLoading;
-        final canCreateJob = _videoUploadResponse != null && 
-                            _transcriptUploadResponse != null;
+        final hasVideo = _videoUploadResponse != null || _selectedS3Video != null;
+        final hasTranscript = _transcriptUploadResponse != null || _transcriptController.text.isNotEmpty;
+        final canCreateJob = hasVideo && hasTranscript;
         
         return Column(
           children: [
@@ -773,38 +806,38 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: _videoUploadResponse != null 
-                          ? Colors.green.shade50 
-                          : Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: _videoUploadResponse != null 
-                            ? Colors.green.shade200 
-                            : Colors.orange.shade200,
-                      ),
+                                          color: hasVideo
+                        ? Colors.green.shade50 
+                        : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: hasVideo
+                          ? Colors.green.shade200 
+                          : Colors.orange.shade200,
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _videoUploadResponse != null 
-                              ? Icons.check_circle 
-                              : Icons.video_file,
-                          color: _videoUploadResponse != null 
-                              ? Colors.green.shade600 
-                              : Colors.orange.shade600,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        hasVideo
+                            ? Icons.check_circle 
+                            : Icons.video_file,
+                        color: hasVideo
+                            ? Colors.green.shade600 
+                            : Colors.orange.shade600,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        hasVideo
+                            ? 'Video Ready' 
+                            : 'Video Required',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: hasVideo
+                              ? Colors.green.shade700 
+                              : Colors.orange.shade700,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _videoUploadResponse != null 
-                              ? 'Video Ready' 
-                              : 'Video Required',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: _videoUploadResponse != null 
-                                ? Colors.green.shade700 
-                                : Colors.orange.shade700,
-                          ),
-                        ),
+                      ),
                       ],
                     ),
                   ),
@@ -814,38 +847,38 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: _transcriptUploadResponse != null 
-                          ? Colors.green.shade50 
-                          : Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: _transcriptUploadResponse != null 
-                            ? Colors.green.shade200 
-                            : Colors.orange.shade200,
-                      ),
+                                          color: hasTranscript
+                        ? Colors.green.shade50 
+                        : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: hasTranscript
+                          ? Colors.green.shade200 
+                          : Colors.orange.shade200,
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _transcriptUploadResponse != null 
-                              ? Icons.check_circle 
-                              : Icons.text_fields,
-                          color: _transcriptUploadResponse != null 
-                              ? Colors.green.shade600 
-                              : Colors.orange.shade600,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        hasTranscript
+                            ? Icons.check_circle 
+                            : Icons.text_fields,
+                        color: hasTranscript
+                            ? Colors.green.shade600 
+                            : Colors.orange.shade600,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        hasTranscript
+                            ? 'Transcript Ready' 
+                            : 'Transcript Required',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: hasTranscript
+                              ? Colors.green.shade700 
+                              : Colors.orange.shade700,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _transcriptUploadResponse != null 
-                              ? 'Transcript Ready' 
-                              : 'Transcript Required',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: _transcriptUploadResponse != null 
-                                ? Colors.green.shade700 
-                                : Colors.orange.shade700,
-                          ),
-                        ),
+                      ),
                       ],
                     ),
                   ),
@@ -1075,13 +1108,47 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
   }
 
   void _createJob() {
-    if (_formKey.currentState!.validate() && 
-        _videoUploadResponse != null && 
-        _transcriptUploadResponse != null) {
-      
-      final request = CreateJobRequest(
-        videoUploadId: _videoUploadResponse!.uploadId,
-        transcriptUploadId: _transcriptUploadResponse!.uploadId,
+    // Validate form
+    if (!_formKey.currentState!.validate()) return;
+    
+    // Check if transcript is available
+    final hasTranscript = _transcriptUploadResponse != null || _transcriptController.text.isNotEmpty;
+    if (!hasTranscript) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please provide a transcript or upload a transcript file'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    // Check if either S3 video is selected or video is uploaded
+    if (_selectedS3Video == null && _videoUploadResponse == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a video or upload a new one'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    // Create job request based on video source
+    CreateJobRequest request;
+    
+    // Determine transcript source (prioritize uploaded file over text)
+    final String? transcriptUploadId = _transcriptUploadResponse?.uploadId;
+    final String? transcriptText = transcriptUploadId == null && _transcriptController.text.isNotEmpty 
+        ? _transcriptController.text 
+        : null;
+    
+    if (_selectedS3Video != null) {
+      // Using S3 video
+      request = CreateJobRequest(
+        s3VideoId: _selectedS3Video!.id,
+        transcriptUploadId: transcriptUploadId,
+        transcriptText: transcriptText,
         title: _titleController.text,
         description: _descriptionController.text.isNotEmpty 
             ? _descriptionController.text 
@@ -1090,9 +1157,23 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
         tags: ['ai', 'shorts', 'youtube'],
         mockMode: _mockMode,
       );
-      
-      context.read<JobsBloc>().add(CreateJobEvent(request));
+    } else {
+      // Using uploaded video
+      request = CreateJobRequest(
+        videoUploadId: _videoUploadResponse!.uploadId,
+        transcriptUploadId: transcriptUploadId,
+        transcriptText: transcriptText,
+        title: _titleController.text,
+        description: _descriptionController.text.isNotEmpty 
+            ? _descriptionController.text 
+            : 'YouTube Short created with AI',
+        voice: _selectedVoice ?? 'alloy',
+        tags: ['ai', 'shorts', 'youtube'],
+        mockMode: _mockMode,
+      );
     }
+    
+    context.read<JobsBloc>().add(CreateJobEvent(request));
   }
 
   void _resetForm() {
@@ -1108,6 +1189,8 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
       _selectedTranscriptPlatformFile = null;
       _videoUploadResponse = null;
       _transcriptUploadResponse = null;
+      _selectedS3Video = null;
+      _showUploadSection = false;
       _isTranscriptFromText = true;
       _autoUploadToYoutube = false;
       _mockMode = false;
