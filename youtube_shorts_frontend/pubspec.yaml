@@ -63,6 +63,9 @@ dependencies:
   # URL launcher (for YouTube links)
   url_launcher: ^6.2.1
   
+  # Image caching
+  cached_network_image: ^3.3.0
+  
   # Dependency injection
   get_it: ^7.6.4
   injectable: ^2.3.2
