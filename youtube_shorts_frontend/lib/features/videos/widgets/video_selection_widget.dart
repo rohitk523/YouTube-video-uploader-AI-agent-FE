@@ -1,0 +1,341 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../shared/models/video_models.dart';
+import '../bloc/video_bloc.dart';
+import '../../../core/network/api_client.dart';
+
+class VideoSelectionWidget extends StatefulWidget {
+  final S3VideoModel? selectedVideo;
+  final Function(S3VideoModel?) onVideoSelected;
+  final VoidCallback onUploadNewVideo;
+  final bool showUploadButton;
+
+  const VideoSelectionWidget({
+    super.key,
+    this.selectedVideo,
+    required this.onVideoSelected,
+    required this.onUploadNewVideo,
+    this.showUploadButton = true,
+  });
+
+  @override
+  State<VideoSelectionWidget> createState() => _VideoSelectionWidgetState();
+}
+
+class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<VideoBloc>().add(const LoadRecentVideos());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('Select Video', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => _showAllVideosDialog(context),
+                  icon: const Icon(Icons.library_music),
+                  label: const Text('Browse All'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text('Recent Videos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey)),
+            const SizedBox(height: 8),
+            BlocBuilder<VideoBloc, VideoState>(
+              builder: (context, state) {
+                if (state is VideoLoading) {
+                  return const Center(child: Padding(padding: EdgeInsets.all(20.0), child: CircularProgressIndicator()));
+                }
+                if (state is RecentVideosLoaded) {
+                  return _buildRecentVideosGrid(state.videos);
+                }
+                if (state is VideoError) {
+                  return _buildErrorWidget(state.message);
+                }
+                return _buildEmptyState();
+              },
+            ),
+            if (widget.showUploadButton) ...[
+              const SizedBox(height: 16),
+              _buildUploadButton(),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentVideosGrid(List<S3VideoModel> videos) {
+    if (videos.isEmpty) return _buildEmptyState();
+
+    return SizedBox(
+      height: 120,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: videos.length,
+        itemBuilder: (context, index) => _buildVideoTile(videos[index]),
+      ),
+    );
+  }
+
+  Widget _buildVideoTile(S3VideoModel video) {
+    final isSelected = widget.selectedVideo?.id == video.id;
+    
+    return Container(
+      width: 100,
+      margin: const EdgeInsets.only(right: 12),
+      child: InkWell(
+        onTap: () => widget.onVideoSelected(video),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? Colors.blue : Colors.grey.shade300,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+                  child: Container(
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.video_file),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(video.filename, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 2),
+                    Text(_formatFileSize(video.fileSize), style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUploadButton() {
+    return Container(
+      width: double.infinity,
+      height: 80,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.blue.shade300, width: 2),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.blue.shade50,
+      ),
+      child: InkWell(
+        onTap: widget.onUploadNewVideo,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_circle_outline, size: 32, color: Colors.blue.shade600),
+            const SizedBox(height: 4),
+            Text('Upload New Video', style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      height: 120,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.video_library_outlined, size: 32, color: Colors.grey.shade400),
+          const SizedBox(height: 8),
+          Text('No recent videos found', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget(String message) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline, color: Colors.red.shade400),
+          const SizedBox(height: 8),
+          Text('Failed to load videos', style: TextStyle(color: Colors.red.shade600)),
+          TextButton(
+            onPressed: () => context.read<VideoBloc>().add(const LoadRecentVideos()),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAllVideosDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => BlocProvider.value(
+        value: context.read<VideoBloc>(),
+        child: VideoLibraryDialog(
+          onVideoSelected: widget.onVideoSelected,
+          selectedVideoId: widget.selectedVideo?.id,
+        ),
+      ),
+    );
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '${bytes}B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)}KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
+  }
+}
+
+class VideoLibraryDialog extends StatefulWidget {
+  final Function(S3VideoModel?) onVideoSelected;
+  final String? selectedVideoId;
+
+  const VideoLibraryDialog({super.key, required this.onVideoSelected, this.selectedVideoId});
+
+  @override
+  State<VideoLibraryDialog> createState() => _VideoLibraryDialogState();
+}
+
+class _VideoLibraryDialogState extends State<VideoLibraryDialog> {
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<VideoBloc>().add(const LoadS3Videos());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.8,
+        height: MediaQuery.of(context).size.height * 0.8,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Text('Video Library', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search videos...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onSubmitted: (query) => context.read<VideoBloc>().add(SearchVideos(query)),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: BlocBuilder<VideoBloc, VideoState>(
+                builder: (context, state) {
+                  if (state is VideoLoading) return const Center(child: CircularProgressIndicator());
+                  if (state is S3VideosLoaded) return _buildVideoGrid(state.videos);
+                  if (state is VideoError) return _buildErrorState(state.message);
+                  return const Center(child: Text('No videos found'));
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoGrid(List<S3VideoModel> videos) {
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.8),
+      itemCount: videos.length,
+      itemBuilder: (context, index) {
+        final video = videos[index];
+        final isSelected = widget.selectedVideoId == video.id;
+        
+        return InkWell(
+          onTap: () {
+            widget.onVideoSelected(video);
+            Navigator.of(context).pop();
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: isSelected ? Colors.blue : Colors.grey.shade300, width: isSelected ? 2 : 1),
+            ),
+            child: Column(
+              children: [
+                Expanded(flex: 3, child: Container(color: Colors.grey.shade200, child: const Icon(Icons.video_file))),
+                Expanded(
+                  flex: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(video.filename, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(_formatFileSize(video.fileSize), style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+          const SizedBox(height: 16),
+          Text(message),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => context.read<VideoBloc>().add(const LoadS3Videos()),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '${bytes}B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)}KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
+  }
+} 
