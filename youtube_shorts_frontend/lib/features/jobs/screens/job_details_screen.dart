@@ -138,8 +138,10 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
           _buildProgressCard(job),
           const SizedBox(height: 16),
           _buildDetailsCard(job),
-          const SizedBox(height: 16),
-          _buildUploadInfoCard(job),
+          if (job.videoUploadId != null || job.transcriptUploadId != null) ...[
+            const SizedBox(height: 16),
+            _buildUploadInfoCard(job),
+          ],
           if (job.outputVideoUrl != null || job.youtubeUrl != null) ...[
             const SizedBox(height: 16),
             _buildResultsCard(job),
@@ -353,25 +355,29 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(
-                  child: _buildUploadChip(
-                    'Video Upload',
-                    job.videoUploadId,
-                    Icons.videocam,
-                    Colors.red.shade100,
-                    Colors.red.shade700,
+                if (job.videoUploadId != null) ...[
+                  Expanded(
+                    child: _buildUploadChip(
+                      'Video Upload',
+                      job.videoUploadId!,
+                      Icons.videocam,
+                      Colors.red.shade100,
+                      Colors.red.shade700,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildUploadChip(
-                    'Transcript Upload',
-                    job.transcriptUploadId,
-                    Icons.description,
-                    Colors.blue.shade100,
-                    Colors.blue.shade700,
+                ],
+                if (job.transcriptUploadId != null) ...[
+                  if (job.videoUploadId != null) const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildUploadChip(
+                      'Transcript Upload',
+                      job.transcriptUploadId!,
+                      Icons.description,
+                      Colors.blue.shade100,
+                      Colors.blue.shade700,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ],

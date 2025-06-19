@@ -33,8 +33,10 @@ enum JobStatus {
 
 // Create job request model
 class CreateJobRequest extends Equatable {
-  final String videoUploadId;
-  final String transcriptUploadId;
+  final String? videoUploadId;
+  final String? s3VideoId;
+  final String? transcriptUploadId;
+  final String? transcriptText;
   final String title;
   final String description;
   final String voice;
@@ -42,19 +44,29 @@ class CreateJobRequest extends Equatable {
   final bool mockMode;
 
   const CreateJobRequest({
-    required this.videoUploadId,
-    required this.transcriptUploadId,
+    this.videoUploadId,
+    this.s3VideoId,
+    this.transcriptUploadId,
+    this.transcriptText,
     required this.title,
     required this.description,
     required this.voice,
     required this.tags,
     this.mockMode = false,
-  });
+  }) : assert(
+    (videoUploadId != null) ^ (s3VideoId != null),
+    'Either videoUploadId or s3VideoId must be provided, but not both',
+  ), assert(
+    (transcriptUploadId != null) ^ (transcriptText != null),
+    'Either transcriptUploadId or transcriptText must be provided, but not both',
+  );
 
   Map<String, dynamic> toJson() {
     return {
-      'video_upload_id': videoUploadId,
-      'transcript_upload_id': transcriptUploadId,
+      if (videoUploadId != null) 'video_upload_id': videoUploadId,
+      if (s3VideoId != null) 's3_video_id': s3VideoId,
+      if (transcriptUploadId != null) 'transcript_upload_id': transcriptUploadId,
+      if (transcriptText != null) 'transcript_text': transcriptText,
       'title': title,
       'description': description,
       'voice': voice,
@@ -65,7 +77,7 @@ class CreateJobRequest extends Equatable {
 
   @override
   List<Object?> get props => [
-    videoUploadId, transcriptUploadId, title, description, voice, tags, mockMode
+    videoUploadId, s3VideoId, transcriptUploadId, transcriptText, title, description, voice, tags, mockMode
   ];
 }
 
@@ -79,7 +91,7 @@ class Job extends Equatable {
   final String description;
   final String voice;
   final List<String> tags;
-  final String videoUploadId;
+  final String? videoUploadId;
   final String? transcriptUploadId;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -107,7 +119,7 @@ class Job extends Equatable {
     required this.description,
     required this.voice,
     required this.tags,
-    required this.videoUploadId,
+    this.videoUploadId,
     this.transcriptUploadId,
     required this.createdAt,
     required this.updatedAt,
@@ -136,7 +148,7 @@ class Job extends Equatable {
     description: json['description'] as String,
     voice: json['voice'] as String,
     tags: (json['tags'] as List<dynamic>).cast<String>(),
-    videoUploadId: json['video_upload_id'] as String,
+    videoUploadId: json['video_upload_id'] as String?,
     transcriptUploadId: json['transcript_upload_id'] as String?,
     createdAt: DateTime.parse(json['created_at'] as String),
     updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -171,7 +183,7 @@ class Job extends Equatable {
     'description': description,
     'voice': voice,
     'tags': tags,
-    'video_upload_id': videoUploadId,
+    if (videoUploadId != null) 'video_upload_id': videoUploadId,
     if (transcriptUploadId != null) 'transcript_upload_id': transcriptUploadId,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
@@ -265,8 +277,8 @@ class Job extends Equatable {
 // Job response model (used for API responses)
 class JobResponse extends Equatable {
   final String jobId;
-  final String videoUploadId;
-  final String transcriptUploadId;
+  final String? videoUploadId;
+  final String? transcriptUploadId;
   final String outputTitle;
   final String? outputDescription;
   final String? voice;
@@ -283,8 +295,8 @@ class JobResponse extends Equatable {
 
   const JobResponse({
     required this.jobId,
-    required this.videoUploadId,
-    required this.transcriptUploadId,
+    this.videoUploadId,
+    this.transcriptUploadId,
     required this.outputTitle,
     this.outputDescription,
     this.voice,
@@ -302,8 +314,8 @@ class JobResponse extends Equatable {
 
   factory JobResponse.fromJson(Map<String, dynamic> json) => JobResponse(
     jobId: json['id'] as String,
-    videoUploadId: json['video_upload_id'] as String,
-    transcriptUploadId: json['transcript_upload_id'] as String,
+    videoUploadId: json['video_upload_id'] as String?,
+    transcriptUploadId: json['transcript_upload_id'] as String?,
     outputTitle: json['title'] as String,
     outputDescription: json['description'] as String?,
     voice: json['voice'] as String?,
