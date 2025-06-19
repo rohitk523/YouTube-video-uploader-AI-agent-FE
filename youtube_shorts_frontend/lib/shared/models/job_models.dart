@@ -39,6 +39,7 @@ class CreateJobRequest extends Equatable {
   final String description;
   final String voice;
   final List<String> tags;
+  final bool mockMode;
 
   const CreateJobRequest({
     required this.videoUploadId,
@@ -47,6 +48,7 @@ class CreateJobRequest extends Equatable {
     required this.description,
     required this.voice,
     required this.tags,
+    this.mockMode = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -57,12 +59,13 @@ class CreateJobRequest extends Equatable {
       'description': description,
       'voice': voice,
       'tags': tags,
+      'mock_mode': mockMode,
     };
   }
 
   @override
   List<Object?> get props => [
-    videoUploadId, transcriptUploadId, title, description, voice, tags
+    videoUploadId, transcriptUploadId, title, description, voice, tags, mockMode
   ];
 }
 
@@ -92,6 +95,8 @@ class Job extends Equatable {
   final double? videoDuration;
   final int? processingTimeSeconds;
   final double? fileSizeMb;
+  final bool mockMode;
+  final String? finalVideoPath;
 
   const Job({
     required this.id,
@@ -118,6 +123,8 @@ class Job extends Equatable {
     this.videoDuration,
     this.processingTimeSeconds,
     this.fileSizeMb,
+    this.mockMode = false,
+    this.finalVideoPath,
   });
 
   factory Job.fromJson(Map<String, dynamic> json) => Job(
@@ -151,6 +158,8 @@ class Job extends Equatable {
     fileSizeMb: json['file_size_mb'] != null 
       ? (json['file_size_mb'] as num).toDouble() 
       : null,
+    mockMode: json['mock_mode'] as bool? ?? false,
+    finalVideoPath: json['final_video_path'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -178,6 +187,8 @@ class Job extends Equatable {
     if (videoDuration != null) 'video_duration': videoDuration,
     if (processingTimeSeconds != null) 'processing_time_seconds': processingTimeSeconds,
     if (fileSizeMb != null) 'file_size_mb': fileSizeMb,
+    'mock_mode': mockMode,
+    if (finalVideoPath != null) 'final_video_path': finalVideoPath,
   };
 
   bool get isCompleted => status == JobStatus.completed;
@@ -210,6 +221,8 @@ class Job extends Equatable {
     double? videoDuration,
     int? processingTimeSeconds,
     double? fileSizeMb,
+    bool? mockMode,
+    String? finalVideoPath,
   }) => Job(
     id: id ?? this.id,
     status: status ?? this.status,
@@ -235,6 +248,8 @@ class Job extends Equatable {
     videoDuration: videoDuration ?? this.videoDuration,
     processingTimeSeconds: processingTimeSeconds ?? this.processingTimeSeconds,
     fileSizeMb: fileSizeMb ?? this.fileSizeMb,
+    mockMode: mockMode ?? this.mockMode,
+    finalVideoPath: finalVideoPath ?? this.finalVideoPath,
   );
 
   @override
@@ -243,7 +258,7 @@ class Job extends Equatable {
     videoUploadId, transcriptUploadId, createdAt, updatedAt, completedAt,
     errorMessage, processedVideoS3Key, audioS3Key, finalVideoS3Key,
     youtubeUrl, youtubeVideoId, tempFilesCleaned, permanentStorage,
-    videoDuration, processingTimeSeconds, fileSizeMb,
+    videoDuration, processingTimeSeconds, fileSizeMb, mockMode, finalVideoPath,
   ];
 }
 
@@ -263,6 +278,8 @@ class JobResponse extends Equatable {
   final String? outputVideoUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool mockMode;
+  final String? finalVideoPath;
 
   const JobResponse({
     required this.jobId,
@@ -279,6 +296,8 @@ class JobResponse extends Equatable {
     this.outputVideoUrl,
     required this.createdAt,
     required this.updatedAt,
+    this.mockMode = false,
+    this.finalVideoPath,
   });
 
   factory JobResponse.fromJson(Map<String, dynamic> json) => JobResponse(
@@ -298,13 +317,15 @@ class JobResponse extends Equatable {
     outputVideoUrl: json['output_video_url'] as String?,
     createdAt: DateTime.parse(json['created_at'] as String),
     updatedAt: DateTime.parse(json['updated_at'] as String),
+    mockMode: json['mock_mode'] as bool? ?? false,
+    finalVideoPath: json['final_video_path'] as String?,
   );
 
   @override
   List<Object?> get props => [
     jobId, videoUploadId, transcriptUploadId, outputTitle, outputDescription,
     voice, autoUpload, status, progressPercentage, errorMessage,
-    youtubeUrl, outputVideoUrl, createdAt, updatedAt,
+    youtubeUrl, outputVideoUrl, createdAt, updatedAt, mockMode, finalVideoPath,
   ];
 }
 
@@ -322,6 +343,8 @@ class JobStatusResponse extends Equatable {
   final DateTime? completedAt;
   final bool tempFilesCleaned;
   final bool permanentStorage;
+  final bool mockMode;
+  final String? finalVideoPath;
 
   const JobStatusResponse({
     required this.id,
@@ -336,6 +359,8 @@ class JobStatusResponse extends Equatable {
     this.completedAt,
     required this.tempFilesCleaned,
     required this.permanentStorage,
+    this.mockMode = false,
+    this.finalVideoPath,
   });
 
   factory JobStatusResponse.fromJson(Map<String, dynamic> json) => JobStatusResponse(
@@ -357,12 +382,15 @@ class JobStatusResponse extends Equatable {
       : null,
     tempFilesCleaned: json['temp_files_cleaned'] as bool,
     permanentStorage: json['permanent_storage'] as bool,
+    mockMode: json['mock_mode'] as bool? ?? false,
+    finalVideoPath: json['final_video_path'] as String?,
   );
 
   @override
   List<Object?> get props => [
     id, status, progressPercentage, errorMessage, youtubeUrl, outputVideoUrl,
     lastUpdated, createdAt, updatedAt, completedAt, tempFilesCleaned, permanentStorage,
+    mockMode, finalVideoPath,
   ];
 }
 
@@ -373,6 +401,8 @@ class JobListItem extends Equatable {
   final int progress;
   final String title;
   final DateTime createdAt;
+  final bool mockMode;
+  final String? youtubeUrl;
 
   const JobListItem({
     required this.id,
@@ -380,6 +410,8 @@ class JobListItem extends Equatable {
     required this.progress,
     required this.title,
     required this.createdAt,
+    this.mockMode = false,
+    this.youtubeUrl,
   });
 
   factory JobListItem.fromJson(Map<String, dynamic> json) => JobListItem(
@@ -388,10 +420,12 @@ class JobListItem extends Equatable {
     progress: json['progress'] as int,
     title: json['title'] as String,
     createdAt: DateTime.parse(json['created_at'] as String),
+    mockMode: json['mock_mode'] as bool? ?? false,
+    youtubeUrl: json['youtube_url'] as String?,
   );
 
   @override
-  List<Object> get props => [id, status, progress, title, createdAt];
+  List<Object?> get props => [id, status, progress, title, createdAt, mockMode, youtubeUrl];
 }
 
 // Job list response model

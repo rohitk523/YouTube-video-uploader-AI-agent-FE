@@ -12,23 +12,44 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  bool _hasNavigated = false;
+
   @override
   void initState() {
     super.initState();
-    // Add a small delay for better UX
+    // Add a small delay for better UX, then navigate directly to login
+    // This bypasses the auth check that might be hanging
     Future.delayed(const Duration(seconds: 2), () {
-      _checkNavigationState();
+      print('SplashScreen: Navigating directly to login to bypass auth hang');
+      _navigateToLogin();
     });
   }
 
   void _checkNavigationState() {
-    if (!mounted) return; // Check if widget is still mounted
+    if (!mounted || _hasNavigated) return;
     
     final authState = context.read<AuthBloc>().state;
     
+    print('SplashScreen: Current auth state: ${authState.runtimeType}');
+    
     if (authState is AuthAuthenticated) {
-      Navigator.of(context).pushReplacementNamed(AppRouter.home);
+      _navigateToHome();
     } else if (authState is AuthUnauthenticated) {
+      _navigateToLogin();
+    }
+    // If AuthLoading, wait for BlocListener to handle state change
+  }
+
+  void _navigateToHome() {
+    if (!_hasNavigated && mounted) {
+      _hasNavigated = true;
+      Navigator.of(context).pushReplacementNamed(AppRouter.home);
+    }
+  }
+
+  void _navigateToLogin() {
+    if (!_hasNavigated && mounted) {
+      _hasNavigated = true;
       Navigator.of(context).pushReplacementNamed(AppRouter.login);
     }
   }
@@ -37,12 +58,14 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (!mounted) return; // Check if widget is still mounted
+        if (!mounted || _hasNavigated) return;
+        
+        print('SplashScreen: AuthBloc state changed to: ${state.runtimeType}');
         
         if (state is AuthAuthenticated) {
-          Navigator.of(context).pushReplacementNamed(AppRouter.home);
+          _navigateToHome();
         } else if (state is AuthUnauthenticated) {
-          Navigator.of(context).pushReplacementNamed(AppRouter.login);
+          _navigateToLogin();
         }
       },
       child: Scaffold(

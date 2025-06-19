@@ -25,32 +25,46 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     
     try {
-      final isLoggedIn = await _authRepository.isLoggedIn();
+      print('AuthBloc: Starting auth check...');
+      
+      // Add timeout to prevent hanging
+      final isLoggedIn = await _authRepository.isLoggedIn()
+          .timeout(const Duration(seconds: 10));
+      
+      print('AuthBloc: isLoggedIn = $isLoggedIn');
       
       if (isLoggedIn) {
         final user = await _authRepository.getStoredUser();
         final token = await _authRepository.getStoredToken();
+        
+        print('AuthBloc: Stored user = ${user?.email}, token exists = ${token != null}');
         
         if (user != null && token != null) {
           emit(AuthAuthenticated(user: user, token: token));
         } else {
           // Try to get fresh user profile
           try {
-            final freshUser = await _authRepository.getUserProfile();
+            print('AuthBloc: Attempting to get fresh user profile...');
+            final freshUser = await _authRepository.getUserProfile()
+                .timeout(const Duration(seconds: 10));
             final freshToken = await _authRepository.getStoredToken();
             if (freshToken != null) {
               emit(AuthAuthenticated(user: freshUser, token: freshToken));
             } else {
+              print('AuthBloc: No fresh token available');
               emit(AuthUnauthenticated());
             }
           } catch (e) {
+            print('AuthBloc: Error getting fresh profile: $e');
             emit(AuthUnauthenticated());
           }
         }
       } else {
+        print('AuthBloc: User not logged in');
         emit(AuthUnauthenticated());
       }
     } catch (e) {
+      print('AuthBloc: Auth check error: $e');
       emit(AuthUnauthenticated());
     }
   }

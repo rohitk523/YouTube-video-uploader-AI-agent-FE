@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
+import 'dart:html' as html;
 import '../../../core/di/service_locator.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../shared/models/job_models.dart';
 import '../bloc/jobs_bloc.dart';
 import '../bloc/jobs_event.dart';
 import '../bloc/jobs_state.dart';
+import '../repository/jobs_repository.dart';
+import '../../../core/network/api_client.dart';
 import 'job_details_screen.dart';
 
 class JobsListScreen extends StatefulWidget {
@@ -16,6 +23,69 @@ class JobsListScreen extends StatefulWidget {
 }
 
 class _JobsListScreenState extends State<JobsListScreen> {
+  Future<void> _downloadProcessedVideo(String jobId) async {
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Starting download...'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+
+      if (kIsWeb) {
+        // For web platform, use ApiClient to get the file with authentication
+        final apiClient = getIt<ApiClient>();
+        final downloadUrl = ApiConstants.downloadJobVideo(jobId);
+        
+        // Make an authenticated request to get the video file
+        final response = await apiClient.get(
+          downloadUrl,
+          options: Options(responseType: ResponseType.bytes),
+        );
+        
+        // Create a blob and download it
+        final bytes = response.data as List<int>;
+        final blob = html.Blob([bytes]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        
+        html.AnchorElement(href: url)
+          ..setAttribute('download', 'processed_video_$jobId.mp4')
+          ..style.display = 'none'
+          ..click();
+          
+        // Clean up the object URL
+        html.Url.revokeObjectUrl(url);
+      } else {
+        // For mobile platforms, use the repository method
+        // Note: You'll need to implement file picker to choose save location
+        final jobsRepository = getIt<JobsRepository>();
+        final savePath = '/tmp/processed_video_$jobId.mp4'; // Temporary path
+        await jobsRepository.downloadProcessedVideo(jobId, savePath);
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Download completed successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      print('Download error: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download failed: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider<JobsBloc>(
@@ -139,6 +209,35 @@ class _JobsListScreenState extends State<JobsListScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  // Show download or YouTube button for completed jobs
+                  if (job.status.name.toLowerCase() == 'completed') ...[
+                    if (job.mockMode) ...[
+                      // Mock mode: Show download button
+                      TextButton.icon(
+                        onPressed: () => _downloadProcessedVideo(job.id),
+                        icon: const Icon(Icons.download, size: 18),
+                        label: const Text('Download'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.blue,
+                        ),
+                      ),
+                    ] else if (job.youtubeUrl != null) ...[
+                      // Regular mode: Show YouTube link
+                      TextButton.icon(
+                        onPressed: () async {
+                          final uri = Uri.parse(job.youtubeUrl!);
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        icon: const Icon(Icons.play_arrow, size: 18),
+                        label: const Text('YouTube'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ],
                   if (_canRetry(job.status.name))
                     TextButton.icon(
                       onPressed: () => _showRetryDialog(job),
@@ -278,6 +377,56 @@ class _JobsListScreenState extends State<JobsListScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
+          const SizedBox(width: 8),
+          if (job.mockMode) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.download, size: 12, color: Colors.blue.shade600),
+                  const SizedBox(width: 2),
+                  Text(
+                    'Mock',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.blue.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (job.youtubeUrl != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.play_arrow, size: 12, color: Colors.red.shade600),
+                  const SizedBox(width: 2),
+                  Text(
+                    'YouTube',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.red.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       );
     }

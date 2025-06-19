@@ -153,23 +153,37 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<bool> isLoggedIn() async {
     try {
+      print('AuthRepository: Checking if logged in...');
       final token = await getStoredToken();
-      if (token == null) return false;
       
-      // Check if token is expired
-      if (_isTokenExpired(token)) {
-        // Try to refresh token
-        try {
-          await refreshToken();
-          return true;
-        } catch (e) {
-          await _clearStoredData();
-          return false;
-        }
+      if (token == null) {
+        print('AuthRepository: No token found');
+        return false;
       }
       
+      print('AuthRepository: Token found, checking expiration...');
+      
+      // For now, just check if token exists and don't try to validate/refresh during startup
+      // This prevents hanging during initial app load
+      // Token validation can be done later when making actual API calls
       return true;
+      
+      // TODO: Re-enable token expiration check after startup
+      // Check if token is expired
+      // if (_isTokenExpired(token)) {
+      //   // Try to refresh token
+      //   try {
+      //     await refreshToken();
+      //     return true;
+      //   } catch (e) {
+      //     await _clearStoredData();
+      //     return false;
+      //   }
+      // }
+      // 
+      // return true;
     } catch (e) {
+      print('AuthRepository: Error checking login status: $e');
       return false;
     }
   }

@@ -32,6 +32,7 @@ class ApiConstants {
   static String getJob(String jobId) => '/jobs/$jobId';
   static String getJobStatus(String jobId) => '/jobs/$jobId/status';
   static String deleteJob(String jobId) => '/jobs/$jobId';
+  static String downloadJobVideo(String jobId) => '/jobs/$jobId/download';
   
   // YouTube endpoints
   static const String voices = '/youtube/voices';

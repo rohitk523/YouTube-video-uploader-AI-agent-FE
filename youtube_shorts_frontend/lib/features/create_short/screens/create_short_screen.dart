@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:html' as html;
+import '../../../core/constants/api_constants.dart';
 import '../../../shared/models/upload_models.dart';
 import '../../../shared/models/job_models.dart';
 import '../../../shared/widgets/video_preview_widget.dart';
@@ -35,6 +38,7 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
   
   bool _isTranscriptFromText = true;
   bool _autoUploadToYoutube = false;
+  bool _mockMode = false;
   String? _selectedVoice = 'alloy';
   
   final List<String> _availableVoices = [
@@ -108,11 +112,11 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    _buildDetailsSection(),
+                    const SizedBox(height: 24),
                     _buildVideoSection(),
                     const SizedBox(height: 24),
                     _buildTranscriptSection(),
-                    const SizedBox(height: 24),
-                    _buildDetailsSection(),
                     const SizedBox(height: 24),
                     _buildOptionsSection(),
                     const SizedBox(height: 32),
@@ -552,7 +556,7 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                 BlocBuilder<UploadBloc, UploadState>(
                   builder: (context, state) {
                     // Show progress if currently uploading transcript file
-                    if (state is UploadProgress && _selectedTranscriptPlatformFile != null && _transcriptUploadResponse == null) {
+                    if (state is UploadProgress && (_selectedTranscriptPlatformFile != null || _selectedTranscriptFile != null) && _transcriptUploadResponse == null) {
                       return Column(
                         children: [
                           LinearProgressIndicator(value: state.progress),
@@ -621,7 +625,7 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                     
                     // Show upload button if file selected but not uploaded
                     return ElevatedButton.icon(
-                      onPressed: _selectedTranscriptPlatformFile != null 
+                      onPressed: (_selectedTranscriptFile != null || _selectedTranscriptPlatformFile != null)
                           ? _uploadTranscriptFile 
                           : null,
                       icon: const Icon(Icons.cloud_upload),
@@ -722,15 +726,31 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('Auto-upload to YouTube'),
-              subtitle: const Text('Automatically upload the processed video to YouTube'),
-              value: _autoUploadToYoutube,
+              title: const Text('Mock Mode'),
+              subtitle: const Text('Process video for download only (don\'t upload to YouTube)'),
+              value: _mockMode,
               onChanged: (value) {
                 setState(() {
-                  _autoUploadToYoutube = value;
+                  _mockMode = value;
+                  if (value) {
+                    _autoUploadToYoutube = false; // Disable auto-upload if mock mode is enabled
+                  }
                 });
               },
             ),
+            if (!_mockMode) ...[
+              const SizedBox(height: 8),
+              SwitchListTile(
+                title: const Text('Auto-upload to YouTube'),
+                subtitle: const Text('Automatically upload the processed video to YouTube'),
+                value: _autoUploadToYoutube,
+                onChanged: (value) {
+                  setState(() {
+                    _autoUploadToYoutube = value;
+                  });
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -1068,6 +1088,7 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
             : 'YouTube Short created with AI',
         voice: _selectedVoice ?? 'alloy',
         tags: ['ai', 'shorts', 'youtube'],
+        mockMode: _mockMode,
       );
       
       context.read<JobsBloc>().add(CreateJobEvent(request));
@@ -1089,17 +1110,60 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
       _transcriptUploadResponse = null;
       _isTranscriptFromText = true;
       _autoUploadToYoutube = false;
+      _mockMode = false;
       _selectedVoice = 'alloy';
     });
     
     context.read<UploadBloc>().add(ResetUploadEvent());
   }
 
+  Future<void> _downloadProcessedVideo(String jobId) async {
+    try {
+      // Use the API constants for the download URL
+      final downloadUrl = '${ApiConstants.apiBaseUrl}${ApiConstants.downloadJobVideo(jobId)}';
+      
+      if (kIsWeb) {
+        // For web platform, trigger download via anchor element
+        html.AnchorElement(href: downloadUrl)
+          ..setAttribute('download', 'processed_video_$jobId.mp4')
+          ..setAttribute('target', '_blank')
+          ..click();
+      } else {
+        // For mobile platforms, open the download URL
+        final uri = Uri.parse(downloadUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          throw 'Could not launch download';
+        }
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Download started successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      print('Download error: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download failed: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _showSuccessDialog(JobResponse job) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Job Created Successfully!'),
+        title: Text(_mockMode ? 'Job Created Successfully!' : 'Job Created Successfully!'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1108,7 +1172,29 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
             const SizedBox(height: 8),
             Text('Status: ${job.status}'),
             const SizedBox(height: 8),
-            const Text('Your video is now being processed. You can track the progress in the Jobs section.'),
+            if (_mockMode) ...[
+              const Row(
+                children: [
+                  Icon(Icons.download, color: Colors.blue, size: 16),
+                  SizedBox(width: 4),
+                  Text('Mock Mode', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text('Your video will be processed for download only. No YouTube upload will occur.'),
+            ] else ...[
+              const Row(
+                children: [
+                  Icon(Icons.upload, color: Colors.red, size: 16),
+                  SizedBox(width: 4),
+                  Text('YouTube Upload', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text('Your video is being processed and will be uploaded to YouTube.'),
+            ],
+            const SizedBox(height: 8),
+            const Text('You can track the progress in the Jobs section.'),
           ],
         ),
         actions: [
