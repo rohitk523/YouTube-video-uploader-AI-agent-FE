@@ -172,6 +172,129 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                 _pickVideoFile();
               },
             ),
+            // Display selected S3 video details prominently
+            if (_selectedS3Video != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    // Video thumbnail/icon
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: _selectedS3Video!.thumbnailUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                _selectedS3Video!.thumbnailUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(Icons.video_file, size: 30, color: Colors.blue.shade600);
+                                },
+                              ),
+                            )
+                          : Icon(Icons.video_file, size: 30, color: Colors.blue.shade600),
+                    ),
+                    const SizedBox(width: 16),
+                    // Video details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.check_circle, size: 16, color: Colors.green.shade600),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Selected Video',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _selectedS3Video!.filename,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                '${(_selectedS3Video!.fileSize / 1024 / 1024).toStringAsFixed(1)} MB',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                              if (_selectedS3Video!.duration != null) ...[
+                                const SizedBox(width: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.play_circle_outline, size: 12, color: Colors.blue.shade700),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _formatDuration(Duration(seconds: _selectedS3Video!.duration!.toInt())),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.blue.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Change video button
+                    OutlinedButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedS3Video = null;
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue.shade600,
+                        side: BorderSide(color: Colors.blue.shade300),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('Change', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (_showUploadSection && _selectedS3Video == null) ...[
               const SizedBox(height: 16),
               const Divider(),
@@ -239,12 +362,59 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${(_selectedVideoPlatformFile!.size / 1024 / 1024).toStringAsFixed(2)} MB',
                           style: TextStyle(
                             color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Duration display for web
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            border: Border.all(color: Colors.blue.shade200),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.play_circle_outline,
+                                size: 16,
+                                color: Colors.blue.shade600,
+                              ),
+                              const SizedBox(width: 4),
+                              FutureBuilder<String?>(
+                                future: _getVideoDurationWeb(_selectedVideoPlatformFile!),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.done) {
+                                    return Text(
+                                      snapshot.data ?? 'Duration unknown',
+                                      style: TextStyle(
+                                        color: Colors.blue.shade700,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    );
+                                  }
+                                  return SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -1245,6 +1415,46 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
         );
       }
     }
+  }
+
+  Future<String?> _getVideoDurationWeb(PlatformFile videoFile) async {
+    try {
+      if (kIsWeb && videoFile.bytes != null) {
+        // Create a video element to get duration
+        final blob = html.Blob([videoFile.bytes!]);
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        
+        final video = html.VideoElement()
+          ..src = url
+          ..preload = 'metadata';
+        
+        // Wait for metadata to load
+        await video.onLoadedMetadata.first;
+        
+        final duration = video.duration;
+        html.Url.revokeObjectUrl(url);
+        
+        if (duration != null && !duration.isNaN && duration.isFinite) {
+          return _formatDuration(Duration(seconds: duration.toInt()));
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error getting video duration: $e');
+      return null;
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    
+    if (duration.inHours > 0) {
+      final hours = twoDigits(duration.inHours);
+      return '$hours:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 
   void _showSuccessDialog(JobResponse job) {

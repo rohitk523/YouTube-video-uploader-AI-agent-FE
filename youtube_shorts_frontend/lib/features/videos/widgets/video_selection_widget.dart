@@ -441,12 +441,46 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
-                  child: Container(
-                    color: Colors.grey.shade200,
-                    child: const Icon(Icons.video_file),
-                  ),
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+                      child: Container(
+                        width: double.infinity,
+                        color: Colors.grey.shade200,
+                        child: video.thumbnailUrl != null
+                            ? Image.network(
+                                video.thumbnailUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(Icons.video_file);
+                                },
+                              )
+                            : const Icon(Icons.video_file),
+                      ),
+                    ),
+                    // Duration overlay - prominent display
+                    if (video.duration != null)
+                      Positioned(
+                        bottom: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _formatDuration(Duration(seconds: video.duration!.toInt())),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               Container(
@@ -454,9 +488,36 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(video.filename, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      video.filename, 
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), 
+                      maxLines: 1, 
+                      overflow: TextOverflow.ellipsis
+                    ),
                     const SizedBox(height: 2),
-                    Text(_formatFileSize(video.fileSize), style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _formatFileSize(video.fileSize), 
+                            style: TextStyle(fontSize: 10, color: Colors.grey.shade600)
+                          ),
+                        ),
+                        if (video.duration != null) ...[
+                          const SizedBox(width: 4),
+                          Icon(Icons.play_circle_outline, size: 10, color: Colors.grey.shade600),
+                          const SizedBox(width: 2),
+                          Text(
+                            _formatDuration(Duration(seconds: video.duration!.toInt())),
+                            style: TextStyle(
+                              fontSize: 10, 
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -540,6 +601,18 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
     if (bytes < 1024) return '${bytes}B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)}KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    
+    if (duration.inHours > 0) {
+      final hours = twoDigits(duration.inHours);
+      return '$hours:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 }
 
@@ -625,7 +698,53 @@ class _VideoLibraryDialogState extends State<VideoLibraryDialog> {
             ),
             child: Column(
               children: [
-                Expanded(flex: 3, child: Container(color: Colors.grey.shade200, child: const Icon(Icons.video_file))),
+                Expanded(
+                  flex: 3, 
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+                          child: video.thumbnailUrl != null
+                              ? Image.network(
+                                  video.thumbnailUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(Icons.video_file);
+                                  },
+                                )
+                              : const Icon(Icons.video_file),
+                        ),
+                      ),
+                      // Duration overlay
+                      if (video.duration != null)
+                        Positioned(
+                          bottom: 4,
+                          right: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.8),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _formatDuration(Duration(seconds: video.duration!.toInt())),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
                 Expanded(
                   flex: 1,
                   child: Padding(
@@ -634,7 +753,26 @@ class _VideoLibraryDialogState extends State<VideoLibraryDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(video.filename, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        Text(_formatFileSize(video.fileSize), style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(_formatFileSize(video.fileSize), style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                            ),
+                            if (video.duration != null) ...[
+                              Icon(Icons.schedule, size: 10, color: Colors.grey.shade600),
+                              const SizedBox(width: 2),
+                              Text(
+                                _formatDuration(Duration(seconds: video.duration!.toInt())),
+                                style: TextStyle(
+                                  fontSize: 10, 
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -669,5 +807,17 @@ class _VideoLibraryDialogState extends State<VideoLibraryDialog> {
     if (bytes < 1024) return '${bytes}B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)}KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    
+    if (duration.inHours > 0) {
+      final hours = twoDigits(duration.inHours);
+      return '$hours:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 } 

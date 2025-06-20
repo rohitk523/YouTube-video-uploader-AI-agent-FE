@@ -128,50 +128,86 @@ class _VideoLibraryScreenState extends State<VideoLibraryScreen> {
           children: [
             Expanded(
               flex: 3,
-              child: Container(
-                color: Colors.grey.shade200,
-                child: video.thumbnailUrl != null
-                    ? Image.network(
-                        video.thumbnailUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(Icons.video_file, size: 48);
-                        },
-                      )
-                    : const Icon(Icons.video_file, size: 48),
+              child: Stack(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    color: Colors.grey.shade200,
+                    child: video.thumbnailUrl != null
+                        ? Image.network(
+                            video.thumbnailUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(Icons.video_file, size: 48);
+                            },
+                          )
+                        : const Icon(Icons.video_file, size: 48),
+                  ),
+                  // Duration overlay
+                  if (video.duration != null)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _formatDuration(Duration(seconds: video.duration!.toInt())),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             Expanded(
-              flex: 2,
+              flex: 1,
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       video.filename,
                       style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      _formatFileSize(video.fileSize),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatDate(video.uploadedAt),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _formatFileSize(video.fileSize),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                        if (video.duration != null) ...[
+                          Icon(Icons.schedule, size: 10, color: Colors.grey.shade600),
+                          const SizedBox(width: 2),
+                          Text(
+                            _formatDuration(Duration(seconds: video.duration!.toInt())),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -339,5 +375,17 @@ class _VideoLibraryScreenState extends State<VideoLibraryScreen> {
     } else {
       return 'Just now';
     }
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    
+    if (duration.inHours > 0) {
+      final hours = twoDigits(duration.inHours);
+      return '$hours:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 } 
