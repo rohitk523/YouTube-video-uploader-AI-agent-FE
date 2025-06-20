@@ -61,4 +61,69 @@ class VideoRepository {
       throw Exception('Failed to fetch video by S3 key: $e');
     }
   }
+
+  /// Get YouTube videos from user's channel
+  Future<YouTubeVideosListResponse> getYouTubeVideos({
+    int page = 1,
+    int pageSize = 20,
+    String? nextPageToken,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'page_size': pageSize,
+        if (nextPageToken != null) 'next_page_token': nextPageToken,
+      };
+
+      final response = await _apiClient.get(
+        '${ApiConstants.videosEndpoint}/youtube-videos',
+        queryParameters: queryParams,
+      );
+
+      return YouTubeVideosListResponse.fromJson(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw Exception('Failed to fetch YouTube videos: $e');
+    }
+  }
+
+  /// Add a specific YouTube video to S3 storage
+  Future<AddVideoToS3Response> addYouTubeVideoToS3(String youtubeVideoId) async {
+    try {
+      final response = await _apiClient.post(
+        '${ApiConstants.videosEndpoint}/youtube-videos/$youtubeVideoId/add-to-s3',
+        data: {},
+      );
+
+      return AddVideoToS3Response.fromJson(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw Exception('Failed to add YouTube video to S3: $e');
+    }
+  }
+
+  /// Sync all YouTube videos to S3 (batch operation)
+  Future<Map<String, dynamic>> syncAllYouTubeVideosToS3() async {
+    try {
+      final response = await _apiClient.post(
+        '${ApiConstants.videosEndpoint}/youtube-videos/sync-all-to-s3',
+        data: {},
+      );
+
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Failed to sync all YouTube videos to S3: $e');
+    }
+  }
+
+  /// Get the status of a video sync operation
+  Future<Map<String, dynamic>> getVideoSyncStatus(String syncId) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiConstants.videosEndpoint}/sync-status/$syncId',
+      );
+
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Failed to get sync status: $e');
+    }
+  }
 } 

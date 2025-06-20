@@ -221,19 +221,19 @@ class _HomeTab extends StatelessWidget {
                 },
               ),
               _QuickActionCard(
+                icon: Icons.youtube_searched_for,
+                title: 'YouTube Videos',
+                subtitle: 'Import videos from YouTube',
+                onTap: () {
+                  Navigator.of(context).pushNamed(AppRouter.youtubeVideos);
+                },
+              ),
+              _QuickActionCard(
                 icon: Icons.upload_file,
                 title: 'Upload Video',
                 subtitle: 'Quick video upload',
                 onTap: () {
                   Navigator.of(context).pushNamed(AppRouter.createShort);
-                },
-              ),
-              _QuickActionCard(
-                icon: Icons.settings_voice,
-                title: 'Voice Options',
-                subtitle: 'Choose AI voice',
-                onTap: () {
-                  // TODO: Show voice selection dialog
                 },
               ),
             ],
