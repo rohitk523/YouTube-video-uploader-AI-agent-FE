@@ -13,6 +13,7 @@ abstract class UploadRepository {
     required String title,
     required String description,
     PlatformFile? platformFile,
+    bool isTemp = true,
     void Function(double)? onProgress,
   });
   Future<UploadResponse> uploadTranscriptText(
@@ -51,6 +52,7 @@ class UploadRepositoryImpl implements UploadRepository {
     required String title,
     required String description,
     PlatformFile? platformFile,
+    bool isTemp = true,
     void Function(double)? onProgress,
   }) async {
     try {
@@ -61,7 +63,7 @@ class UploadRepositoryImpl implements UploadRepository {
         additionalFields: {
           'title': title,
           'description': description,
-          'is_temp': 'true',
+          'is_temp': isTemp.toString(),
         },
         onSendProgress: onProgress != null 
           ? (sent, total) => onProgress(sent / total) 

@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io';
 import '../../../shared/models/video_models.dart';
 import '../bloc/video_bloc.dart';
 import '../../../core/network/api_client.dart';
+import '../../upload/bloc/upload_bloc.dart';
+import '../../upload/bloc/upload_event.dart';
+import '../../upload/bloc/upload_state.dart';
 
 class VideoSelectionWidget extends StatefulWidget {
   final S3VideoModel? selectedVideo;
@@ -23,6 +29,10 @@ class VideoSelectionWidget extends StatefulWidget {
 }
 
 class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
+  bool _showHoveringUploadBox = false;
+  File? _selectedVideoFile;
+  PlatformFile? _selectedVideoPlatformFile;
+
   @override
   void initState() {
     super.initState();
@@ -31,48 +41,370 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Stack(
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Select Video', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () => _showAllVideosDialog(context),
-                  icon: const Icon(Icons.library_music),
-                  label: const Text('Browse All'),
+                Row(
+                  children: [
+                    const Text('Select Video', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () => _showAllVideosDialog(context),
+                      icon: const Icon(Icons.library_music),
+                      label: const Text('Browse All'),
+                    ),
+                    const SizedBox(width: 8),
+                    // Floating Upload Button
+                    ElevatedButton.icon(
+                      onPressed: () => _showHoveringUploadBox(),
+                      icon: const Icon(Icons.cloud_upload, size: 18),
+                      label: const Text('Quick Upload'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        elevation: 4,
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 16),
+                const Text('Recent Videos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey)),
+                const SizedBox(height: 8),
+                BlocBuilder<VideoBloc, VideoState>(
+                  builder: (context, state) {
+                    if (state is VideoLoading) {
+                      return const Center(child: Padding(padding: EdgeInsets.all(20.0), child: CircularProgressIndicator()));
+                    }
+                    if (state is RecentVideosLoaded) {
+                      return _buildRecentVideosGrid(state.videos);
+                    }
+                    if (state is VideoError) {
+                      return _buildErrorWidget(state.message);
+                    }
+                    return _buildEmptyState();
+                  },
+                ),
+                if (widget.showUploadButton) ...[
+                  const SizedBox(height: 16),
+                  _buildUploadButton(),
+                ],
               ],
             ),
-            const SizedBox(height: 16),
-            const Text('Recent Videos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey)),
-            const SizedBox(height: 8),
-            BlocBuilder<VideoBloc, VideoState>(
-              builder: (context, state) {
-                if (state is VideoLoading) {
-                  return const Center(child: Padding(padding: EdgeInsets.all(20.0), child: CircularProgressIndicator()));
-                }
-                if (state is RecentVideosLoaded) {
-                  return _buildRecentVideosGrid(state.videos);
-                }
-                if (state is VideoError) {
-                  return _buildErrorWidget(state.message);
-                }
-                return _buildEmptyState();
-              },
+          ),
+        ),
+        // Hovering Upload Box Overlay
+        if (_showHoveringUploadBox) _buildHoveringUploadBox(),
+      ],
+    );
+  }
+
+  Widget _buildHoveringUploadBox() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.5),
+        child: Center(
+          child: Card(
+            margin: const EdgeInsets.all(32),
+            elevation: 16,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            if (widget.showUploadButton) ...[
-              const SizedBox(height: 16),
-              _buildUploadButton(),
-            ],
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 500, maxHeight: 400),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Icon(Icons.cloud_upload, color: Colors.blue.shade600, size: 28),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Quick Video Upload',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => setState(() => _showHoveringUploadBox = false),
+                        icon: const Icon(Icons.close),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.grey.shade100,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Upload Area
+                  if (_selectedVideoPlatformFile == null) ...[
+                    _buildUploadDropZone(),
+                  ] else ...[
+                    _buildSelectedFileDisplay(),
+                    const SizedBox(height: 16),
+                    _buildUploadActions(),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUploadDropZone() {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Colors.blue.shade300,
+          width: 2,
+          style: BorderStyle.solid,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.blue.shade50,
+      ),
+      child: InkWell(
+        onTap: _pickVideoFile,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.video_call,
+              size: 64,
+              color: Colors.blue.shade600,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Tap to select video file',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.blue.shade700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Supported formats: MP4, MOV, AVI',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.blue.shade600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade600,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Choose File',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildSelectedFileDisplay() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade200),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.video_file, color: Colors.green.shade600, size: 32),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _selectedVideoPlatformFile!.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${(_selectedVideoPlatformFile!.size / 1024 / 1024).toStringAsFixed(2)} MB',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() {
+                  _selectedVideoPlatformFile = null;
+                  _selectedVideoFile = null;
+                }),
+                icon: Icon(Icons.close, color: Colors.red.shade600),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUploadActions() {
+    return BlocConsumer<UploadBloc, UploadState>(
+      listener: (context, state) {
+        if (state is VideoUploadSuccess) {
+          setState(() {
+            _showHoveringUploadBox = false;
+            _selectedVideoPlatformFile = null;
+            _selectedVideoFile = null;
+          });
+          
+          // Refresh recent videos to show the newly uploaded video
+          context.read<VideoBloc>().add(const LoadRecentVideos());
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Text('Video uploaded successfully! It will appear in recent videos.'),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else if (state is UploadError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Upload failed: ${state.message}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      builder: (context, state) {
+        if (state is UploadProgress) {
+          return Column(
+            children: [
+              LinearProgressIndicator(
+                value: state.progress,
+                backgroundColor: Colors.grey.shade300,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                state.message ?? 'Uploading video...',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ],
+          );
+        }
+        
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => setState(() {
+                  _selectedVideoPlatformFile = null;
+                  _selectedVideoFile = null;
+                }),
+                child: const Text('Change File'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _uploadSelectedVideo,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade600,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Upload Now'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _pickVideoFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.video,
+    );
+    
+    if (result != null && result.files.isNotEmpty) {
+      final platformFile = result.files.first;
+      setState(() {
+        _selectedVideoPlatformFile = platformFile;
+        // For non-web platforms, still create File object
+        if (!kIsWeb && platformFile.path != null) {
+          _selectedVideoFile = File(platformFile.path!);
+        }
+      });
+    }
+  }
+
+  void _uploadSelectedVideo() {
+    if (_selectedVideoPlatformFile != null) {
+      if (kIsWeb) {
+        // For web, use platform file with is_temp=false to appear in recent videos
+        context.read<UploadBloc>().add(
+          UploadVideoEvent(
+            videoFile: null,
+            title: _selectedVideoPlatformFile!.name.replaceAll(RegExp(r'\.[^.]*$'), ''), // Remove extension for title
+            description: 'Uploaded via Quick Upload',
+            platformFile: _selectedVideoPlatformFile!,
+            isTemp: false, // Set to false so video appears in recent videos
+          ),
+        );
+      } else if (_selectedVideoFile != null) {
+        // For mobile, use File object with is_temp=false to appear in recent videos
+        context.read<UploadBloc>().add(
+          UploadVideoEvent(
+            videoFile: _selectedVideoFile!,
+            title: _selectedVideoPlatformFile!.name.replaceAll(RegExp(r'\.[^.]*$'), ''), // Remove extension for title
+            description: 'Uploaded via Quick Upload',
+            isTemp: false, // Set to false so video appears in recent videos
+          ),
+        );
+      }
+    }
+  }
+
+  void _showHoveringUploadBox() {
+    setState(() {
+      _showHoveringUploadBox = true;
+      _selectedVideoPlatformFile = null;
+      _selectedVideoFile = null;
+    });
   }
 
   Widget _buildRecentVideosGrid(List<S3VideoModel> videos) {

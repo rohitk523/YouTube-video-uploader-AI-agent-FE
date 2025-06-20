@@ -14,16 +14,18 @@ class UploadVideoEvent extends UploadEvent {
   final PlatformFile? platformFile;
   final String title;
   final String? description;
+  final bool isTemp;
 
   const UploadVideoEvent({
     this.videoFile,
     this.platformFile,
     required this.title,
     this.description,
+    this.isTemp = true,
   });
 
   @override
-  List<Object?> get props => [videoFile, platformFile, title, description];
+  List<Object?> get props => [videoFile, platformFile, title, description, isTemp];
 }
 
 class UploadTranscriptTextEvent extends UploadEvent {

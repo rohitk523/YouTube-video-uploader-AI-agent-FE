@@ -27,6 +27,7 @@ class UploadBloc extends Bloc<UploadEvent, UploadState> {
         title: event.title,
         description: event.description ?? '',
         platformFile: event.platformFile,
+        isTemp: event.isTemp,
         onProgress: (progress) {
           emit(UploadProgress(
             progress: progress,
