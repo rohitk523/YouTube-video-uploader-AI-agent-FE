@@ -398,8 +398,11 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                     onChanged: (value) {
                       setState(() {
                         _isTranscriptFromText = value!;
-                        if (!value) {
-                          _transcriptController.clear();
+                        if (value) {
+                          // Clear file upload related data when switching to text input
+                          _selectedTranscriptFile = null;
+                          _selectedTranscriptPlatformFile = null;
+                          _transcriptUploadResponse = null;
                         }
                       });
                     },
@@ -412,9 +415,11 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                     groupValue: _isTranscriptFromText,
                     onChanged: (value) {
                       setState(() {
-                        _isTranscriptFromText = !value!;
-                        if (value!) {
-                          _selectedTranscriptFile = null;
+                        _isTranscriptFromText = false;
+                        if (!_isTranscriptFromText) {
+                          // Clear text input related data when switching to file upload
+                          _transcriptController.clear();
+                          _transcriptUploadResponse = null;
                         }
                       });
                     },
