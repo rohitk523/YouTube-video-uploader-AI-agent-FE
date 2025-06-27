@@ -21,14 +21,13 @@ class JobDetailsScreen extends StatefulWidget {
 
 class _JobDetailsScreenState extends State<JobDetailsScreen> {
   late JobsBloc _jobsBloc;
+  JobResponse? _currentJob;
 
   @override
   void initState() {
     super.initState();
     _jobsBloc = getIt<JobsBloc>();
     _jobsBloc.add(LoadJobDetailsEvent(widget.jobId));
-    // Start polling for status updates if job is processing
-    _jobsBloc.add(StartJobPollingEvent(widget.jobId));
   }
 
   @override
@@ -61,12 +60,14 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
         ),
         body: BlocListener<JobsBloc, JobsState>(
           listener: (context, state) {
-            if (state is JobDeleted) {
+            if (state is JobDeletedAndListUpdated) {
               Navigator.of(context).pop();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Job deleted successfully'),
+                  content: Text('Job deleted successfully!'),
                   backgroundColor: Colors.green,
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 3),
                 ),
               );
             } else if (state is JobsError) {
@@ -74,48 +75,58 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                 SnackBar(
                   content: Text('Error: ${state.message}'),
                   backgroundColor: Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 4),
                 ),
               );
             }
           },
           child: BlocBuilder<JobsBloc, JobsState>(
             builder: (context, state) {
-              if (state is JobsLoading) {
+              if (state is JobsLoading && _currentJob == null) {
                 return const Center(
                   child: CircularProgressIndicator(),
                 );
               } else if (state is JobDetailsLoaded) {
+                _currentJob = state.job;
+                // Start polling only if job is processing
+                if (state.job.status.toLowerCase() == 'processing') {
+                  _jobsBloc.add(StartJobPollingEvent(widget.jobId));
+                } else {
+                  _jobsBloc.add(StopJobPollingEvent());
+                }
                 return _buildJobDetails(state.job);
-              } else if (state is JobStatusUpdated) {
-                // Update the UI with new status while keeping job details
-                return BlocBuilder<JobsBloc, JobsState>(
-                  buildWhen: (previous, current) => current is JobDetailsLoaded,
-                  builder: (context, jobState) {
-                    if (jobState is JobDetailsLoaded) {
-                      // Create updated job with new status
-                      final updatedJob = JobResponse(
-                        jobId: jobState.job.jobId,
-                        videoUploadId: jobState.job.videoUploadId,
-                        transcriptUploadId: jobState.job.transcriptUploadId,
-                        outputTitle: jobState.job.outputTitle,
-                        outputDescription: jobState.job.outputDescription,
-                        voice: jobState.job.voice,
-                        autoUpload: jobState.job.autoUpload,
-                        status: state.status.status,
-                        progressPercentage: state.status.progressPercentage,
-                        errorMessage: state.status.errorMessage,
-                        youtubeUrl: state.status.youtubeUrl ?? jobState.job.youtubeUrl,
-                        outputVideoUrl: state.status.outputVideoUrl ?? jobState.job.outputVideoUrl,
-                        createdAt: jobState.job.createdAt,
-                        updatedAt: state.status.lastUpdated ?? jobState.job.updatedAt,
-                      );
-                      return _buildJobDetails(updatedJob);
-                    }
-                    return const Center(child: CircularProgressIndicator());
-                  },
+              } else if (state is JobStatusUpdated && _currentJob != null) {
+                // Update current job with new status without full reload
+                final updatedJob = JobResponse(
+                  jobId: _currentJob!.jobId,
+                  videoUploadId: _currentJob!.videoUploadId,
+                  transcriptUploadId: _currentJob!.transcriptUploadId,
+                  outputTitle: _currentJob!.outputTitle,
+                  outputDescription: _currentJob!.outputDescription,
+                  voice: _currentJob!.voice,
+                  autoUpload: _currentJob!.autoUpload,
+                  status: state.status.status,
+                  progressPercentage: state.status.progressPercentage,
+                  errorMessage: state.status.errorMessage,
+                  youtubeUrl: state.status.youtubeUrl ?? _currentJob!.youtubeUrl,
+                  outputVideoUrl: state.status.outputVideoUrl ?? _currentJob!.outputVideoUrl,
+                  createdAt: _currentJob!.createdAt,
+                  updatedAt: state.status.lastUpdated ?? _currentJob!.updatedAt,
                 );
-              } else if (state is JobsError) {
+                _currentJob = updatedJob;
+                
+                // Stop polling if job is no longer processing
+                if (updatedJob.status.toLowerCase() != 'processing') {
+                  _jobsBloc.add(StopJobPollingEvent());
+                }
+                
+                return _buildJobDetails(updatedJob);
+              } else if (state is JobsError && _currentJob == null) {
                 return _buildErrorState(state.message);
+              } else if (_currentJob != null) {
+                // Show current job data while loading
+                return _buildJobDetails(_currentJob!);
               }
               return const Center(child: CircularProgressIndicator());
             },
@@ -792,7 +803,9 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
   }
 
   bool _canDelete(String status) {
-    return ['failed', 'completed'].contains(status.toLowerCase());
+    // Allow deletion for failed, completed, and pending jobs
+    // Don't allow deletion of currently processing jobs
+    return !['processing'].contains(status.toLowerCase());
   }
 
   void _showRetryDialog(JobResponse job) {

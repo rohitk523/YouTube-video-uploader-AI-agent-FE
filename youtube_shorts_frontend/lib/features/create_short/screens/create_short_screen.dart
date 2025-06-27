@@ -50,6 +50,17 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Add listener to transcript controller to update UI reactively
+    _transcriptController.addListener(() {
+      setState(() {
+        // This will trigger a rebuild when the text changes
+      });
+    });
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
@@ -60,77 +71,517 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Create YouTube Short'),
-          backgroundColor: Colors.red.shade600,
-          foregroundColor: Colors.white,
-        ),
-        body: BlocListener<JobsBloc, JobsState>(
+      backgroundColor: _isWeb(context) ? const Color(0xFFF8FAFC) : null,
+      appBar: _isWeb(context) ? null : AppBar(
+        title: const Text('Create YouTube Short'),
+        backgroundColor: Colors.blue.shade600,
+        foregroundColor: Colors.white,
+      ),
+      body: BlocListener<JobsBloc, JobsState>(
+        listener: (context, state) {
+          if (state is JobCreated) {
+            _showSuccessDialog(state.job);
+          } else if (state is JobsError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error creating job: ${state.message}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        child: BlocListener<UploadBloc, UploadState>(
           listener: (context, state) {
-            if (state is JobCreated) {
-              _showSuccessDialog(state.job);
-            } else if (state is JobsError) {
+            if (state is VideoUploadSuccess) {
+              setState(() {
+                _videoUploadResponse = state.uploadResponse;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Video uploaded successfully!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } else if (state is TranscriptUploadSuccess) {
+              setState(() {
+                _transcriptUploadResponse = state.uploadResponse;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Transcript uploaded successfully!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } else if (state is UploadError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Error creating job: ${state.message}'),
+                  content: Text('Upload error: ${state.message}'),
                   backgroundColor: Colors.red,
                 ),
               );
             }
           },
-          child: BlocListener<UploadBloc, UploadState>(
-            listener: (context, state) {
-              if (state is VideoUploadSuccess) {
-                setState(() {
-                  _videoUploadResponse = state.uploadResponse;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Video uploaded successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else if (state is TranscriptUploadSuccess) {
-                setState(() {
-                  _transcriptUploadResponse = state.uploadResponse;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Transcript uploaded successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else if (state is UploadError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Upload error: ${state.message}'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildDetailsSection(),
-                    const SizedBox(height: 24),
-                    _buildVideoSection(),
-                    const SizedBox(height: 24),
-                    _buildTranscriptSection(),
-                    const SizedBox(height: 24),
-                    _buildOptionsSection(),
-                    const SizedBox(height: 32),
-                    _buildActionButtons(),
+          child: _isWeb(context) ? _buildWebLayout() : _buildMobileLayout(),
+        ),
+      ),
+    );
+  }
+
+  bool _isWeb(BuildContext context) {
+    return MediaQuery.of(context).size.width > 768;
+  }
+
+  Widget _buildWebLayout() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.blue.shade50,
+            Colors.white,
+          ],
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left Panel - Configuration
+            Expanded(
+              flex: 2,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(32),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildWebStepCard(
+                          stepNumber: 1,
+                          title: 'Video Details',
+                          child: _buildDetailsSection(),
+                        ),
+                        const SizedBox(height: 32),
+                        _buildWebStepCard(
+                          stepNumber: 2,
+                          title: 'Select Your Video',
+                          child: _buildVideoSection(),
+                        ),
+                        const SizedBox(height: 32),
+                        _buildWebStepCard(
+                          stepNumber: 3,
+                          title: 'Add Your Script',
+                          child: _buildTranscriptSection(),
+                        ),
+                        const SizedBox(height: 32),
+                        _buildWebStepCard(
+                          stepNumber: 4,
+                          title: 'Advanced Options',
+                          child: _buildOptionsSection(),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
+            
+            const SizedBox(width: 32),
+            
+            // Right Panel - Preview & Actions
+            Expanded(
+              flex: 1,
+              child: Column(
+                children: [
+                  // Status Panel
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Creation Status',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildWebStatusIndicators(),
+                        const SizedBox(height: 32),
+                        _buildWebActionButton(),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Video Preview Panel (if video selected)
+                  if (_selectedS3Video != null || _videoUploadResponse != null)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Video Preview',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildVideoPreview(),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildDetailsSection(),
+            const SizedBox(height: 24),
+            _buildVideoSection(),
+            const SizedBox(height: 24),
+            _buildTranscriptSection(),
+            const SizedBox(height: 24),
+            _buildOptionsSection(),
+            const SizedBox(height: 32),
+            _buildActionButtons(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWebStepCard({
+    required int stepNumber,
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade600,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Text(
+                    stepNumber.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebStatusIndicators() {
+    final hasVideo = _videoUploadResponse != null || _selectedS3Video != null;
+    final hasTranscript = _isTranscriptFromText 
+        ? _transcriptController.text.trim().isNotEmpty
+        : _transcriptUploadResponse != null;
+    
+    return Column(
+      children: [
+        _buildWebStatusItem(
+          icon: hasVideo ? Icons.check_circle : Icons.video_file,
+          label: 'Video',
+          status: hasVideo ? 'Ready' : 'Required',
+          isReady: hasVideo,
+        ),
+        const SizedBox(height: 16),
+        _buildWebStatusItem(
+          icon: hasTranscript ? Icons.check_circle : Icons.text_fields,
+          label: 'Script',
+          status: hasTranscript ? 'Ready' : 'Required',
+          isReady: hasTranscript,
+        ),
+        const SizedBox(height: 16),
+        _buildWebStatusItem(
+          icon: _titleController.text.isNotEmpty ? Icons.check_circle : Icons.title,
+          label: 'Title',
+          status: _titleController.text.isNotEmpty ? 'Ready' : 'Required',
+          isReady: _titleController.text.isNotEmpty,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWebStatusItem({
+    required IconData icon,
+    required String label,
+    required String status,
+    required bool isReady,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isReady ? Colors.green.shade50 : Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isReady ? Colors.green.shade200 : Colors.orange.shade200,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: isReady ? Colors.green.shade600 : Colors.orange.shade600,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  status,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isReady ? Colors.green.shade700 : Colors.orange.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebActionButton() {
+    return BlocBuilder<JobsBloc, JobsState>(
+      builder: (context, state) {
+        final isLoading = state is JobsLoading;
+        final hasVideo = _videoUploadResponse != null || _selectedS3Video != null;
+        final hasTranscript = _isTranscriptFromText 
+            ? _transcriptController.text.trim().isNotEmpty
+            : _transcriptUploadResponse != null;
+        final canCreateJob = hasVideo && hasTranscript && _titleController.text.isNotEmpty;
+        
+        return SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton(
+            onPressed: isLoading || !canCreateJob ? null : _createJob,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: canCreateJob 
+                  ? Colors.blue.shade600
+                  : Colors.grey.shade400,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: canCreateJob ? 4 : 0,
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.rocket_launch),
+                      const SizedBox(width: 8),
+                      Text(
+                        canCreateJob 
+                            ? 'Generate Short' 
+                            : 'Complete Setup',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildVideoPreview() {
+    if (_selectedS3Video != null) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: _selectedS3Video!.thumbnailUrl != null
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  _selectedS3Video!.thumbnailUrl!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Center(
+                      child: Icon(Icons.video_file, size: 48),
+                    );
+                  },
+                ),
+              )
+            : const Center(
+                child: Icon(Icons.video_file, size: 48),
+              ),
+      );
+    }
+    
+    return Container(
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.video_call, size: 48, color: Colors.grey),
+            SizedBox(height: 8),
+            Text('Select a video to see preview'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailsSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Video Details',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'Title',
+                hintText: 'Enter video title',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter a title';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descriptionController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Description (Optional)',
+                hintText: 'Enter video description',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -614,89 +1065,54 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              BlocBuilder<UploadBloc, UploadState>(
-                builder: (context, state) {
-                  // Show progress if currently uploading transcript
-                  if (state is UploadProgress && _transcriptController.text.isNotEmpty && _transcriptUploadResponse == null) {
-                    return Column(
-                      children: [
-                        LinearProgressIndicator(value: state.progress),
-                        const SizedBox(height: 8),
-                        Text(state.message ?? 'Uploading transcript...'),
-                      ],
-                    );
-                  }
-                  
-                  // If already uploaded, show success state
-                  if (_transcriptUploadResponse != null) {
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.check_circle, color: Colors.green.shade600),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Transcript uploaded successfully!',
-                                        style: TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      Text(
-                                        _transcriptUploadResponse!.filename,
-                                        style: const TextStyle(fontSize: 12),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+              // For text input, show immediate green light when text is entered
+              _transcriptController.text.trim().isNotEmpty
+                  ? Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.green.shade600),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Transcript ready! Your text will be used directly for processing.',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _transcriptUploadResponse = null;
-                            });
-                          },
-                          icon: const Icon(Icons.refresh, size: 16),
-                          label: const Text('Re-upload'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade600,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ],
+                      ),
+                    )
+                  : Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_note, color: Colors.orange.shade600),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Enter your transcript text above to continue.',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.orange,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    );
-                  }
-                  
-                  // Show upload button if text entered but not uploaded
-                  return ElevatedButton.icon(
-                    onPressed: _transcriptController.text.isNotEmpty 
-                        ? _uploadTranscriptText 
-                        : null,
-                    icon: const Icon(Icons.text_fields),
-                    label: const Text('Upload Transcript'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                        ],
+                      ),
                     ),
-                  );
-                },
-              ),
             ] else ...[
               if (_selectedTranscriptFile == null) ...[
                 Container(
@@ -853,51 +1269,6 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
     );
   }
 
-  Widget _buildDetailsSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Video Details',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                hintText: 'Enter video title',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a title';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Description (Optional)',
-                hintText: 'Enter video description',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildOptionsSection() {
     return Card(
       child: Padding(
@@ -969,7 +1340,11 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
       builder: (context, state) {
         final isLoading = state is JobsLoading;
         final hasVideo = _videoUploadResponse != null || _selectedS3Video != null;
-        final hasTranscript = _transcriptUploadResponse != null || _transcriptController.text.isNotEmpty;
+        // For text input: green light immediately when text is entered
+        // For file upload: green light only after successful upload
+        final hasTranscript = _isTranscriptFromText 
+            ? _transcriptController.text.trim().isNotEmpty
+            : _transcriptUploadResponse != null;
         final canCreateJob = hasVideo && hasTranscript;
         
         return Column(
@@ -1171,36 +1546,16 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
         }
       });
       
-      // Show dialog asking if user wants to upload immediately
-      if (mounted && _titleController.text.isNotEmpty) {
-        final shouldUpload = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Upload Transcript Now?'),
-            content: const Text('Do you want to upload the selected transcript file immediately?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Later'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Upload Now'),
-              ),
-            ],
-          ),
-        );
-        
-        if (shouldUpload == true) {
-          _uploadTranscriptFile();
-        }
-      } else if (_titleController.text.isEmpty) {
+      // Auto-upload transcript file immediately after selection
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please enter a title first to enable auto-upload'),
-            backgroundColor: Colors.orange,
+            content: Text('Uploading transcript file...'),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 2),
           ),
         );
+        _uploadTranscriptFile();
       }
     }
   }

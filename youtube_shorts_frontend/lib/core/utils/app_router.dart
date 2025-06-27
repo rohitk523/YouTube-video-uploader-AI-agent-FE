@@ -11,7 +11,7 @@ import '../../features/videos/bloc/video_bloc.dart';
 import '../splash/splash_screen.dart';
 import '../home/home_screen.dart';
 import '../di/service_locator.dart';
-import '../../features/videos/screens/youtube_videos_list_screen.dart';
+
 
 class AppRouter {
   static const String splash = '/';
@@ -21,7 +21,7 @@ class AppRouter {
   static const String createShort = '/create-short';
   static const String jobsList = '/jobs';
   static const String jobDetails = '/job-details';
-  static const String youtubeVideos = '/youtube-videos';
+
   
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -87,18 +87,7 @@ class AppRouter {
           settings: settings,
         );
         
-      case youtubeVideos:
-        return MaterialPageRoute(
-          builder: (_) => MultiBlocProvider(
-            providers: [
-              BlocProvider<VideoBloc>(
-                create: (_) => getIt<VideoBloc>(),
-              ),
-            ],
-            child: const YouTubeVideosListScreen(),
-          ),
-          settings: settings,
-        );
+      
         
       default:
         return _errorRoute('Route not found: ${settings.name}');

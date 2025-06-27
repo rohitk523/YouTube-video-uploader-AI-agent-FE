@@ -57,6 +57,19 @@ class JobDeleted extends JobsState {
   List<Object> get props => [jobId];
 }
 
+class JobDeletedAndListUpdated extends JobsState {
+  final String deletedJobId;
+  final List<JobListItem> updatedJobs;
+
+  const JobDeletedAndListUpdated({
+    required this.deletedJobId,
+    required this.updatedJobs,
+  });
+
+  @override
+  List<Object> get props => [deletedJobId, updatedJobs];
+}
+
 class JobsError extends JobsState {
   final String message;
   final String? errorCode;

@@ -30,6 +30,9 @@ class JobsBloc extends Bloc<JobsEvent, JobsState> {
     LoadJobsEvent event,
     Emitter<JobsState> emit,
   ) async {
+    print('🔄 LoadJobsEvent triggered with limit: ${event.limit}, offset: ${event.offset}');
+    print('🔍 Current state before loading: ${state.runtimeType}');
+    
     emit(JobsLoading());
     
     try {
@@ -37,8 +40,10 @@ class JobsBloc extends Bloc<JobsEvent, JobsState> {
         limit: event.limit,
         offset: event.offset,
       );
+      print('📋 LoadJobs completed, emitting JobsListLoaded with ${jobs.length} jobs');
       emit(JobsListLoaded(jobs));
     } catch (e) {
+      print('❌ LoadJobs failed: $e');
       emit(JobsError(message: e.toString()));
     }
   }
@@ -88,9 +93,21 @@ class JobsBloc extends Bloc<JobsEvent, JobsState> {
     Emitter<JobsState> emit,
   ) async {
     try {
+      print('🗑️ Starting job deletion for ID: ${event.jobId}');
       await jobsRepository.deleteJob(event.jobId);
-      emit(JobDeleted(event.jobId));
+      print('✅ Job deleted successfully');
+      
+      // Emit simple deletion success state
+      print('🔄 Emitting JobDeleted state with jobId: ${event.jobId}');
+      final deleteState = JobDeleted(event.jobId);
+      print('📤 About to emit state: ${deleteState.runtimeType}');
+      print('📤 State details: $deleteState');
+      print('📤 Current bloc state before emit: ${state.runtimeType}');
+      emit(deleteState);
+      print('✅ JobDeleted state emitted successfully');
+      print('📤 Current bloc state after emit: ${state.runtimeType}');
     } catch (e) {
+      print('❌ Error deleting job: $e');
       emit(JobsError(message: e.toString()));
     }
   }
@@ -99,10 +116,15 @@ class JobsBloc extends Bloc<JobsEvent, JobsState> {
     RefreshJobsEvent event,
     Emitter<JobsState> emit,
   ) async {
+    print('🔄 RefreshJobsEvent triggered');
+    print('🔍 Current state before refresh: ${state.runtimeType}');
+    
     try {
       final jobs = await jobsRepository.getJobs();
+      print('📋 RefreshJobs completed, emitting JobsListLoaded with ${jobs.length} jobs');
       emit(JobsListLoaded(jobs));
     } catch (e) {
+      print('❌ RefreshJobs failed: $e');
       emit(JobsError(message: e.toString()));
     }
   }

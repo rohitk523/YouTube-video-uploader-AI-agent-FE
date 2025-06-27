@@ -29,7 +29,7 @@ class VideoSelectionWidget extends StatefulWidget {
 }
 
 class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
-  bool _showHoveringUploadBox = false;
+  bool _openHoveringUploadBox = false;
   File? _selectedVideoFile;
   PlatformFile? _selectedVideoPlatformFile;
 
@@ -99,7 +99,7 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
           ),
         ),
         // Hovering Upload Box Overlay
-        if (_showHoveringUploadBox) _buildHoveringUploadBox(),
+        if (_openHoveringUploadBox) _buildHoveringUploadBox(),
       ],
     );
   }
@@ -133,7 +133,7 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
                       ),
                       const Spacer(),
                       IconButton(
-                        onPressed: () => setState(() => _showHoveringUploadBox = false),
+                        onPressed: () => setState(() => _openHoveringUploadBox = false),
                         icon: const Icon(Icons.close),
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.grey.shade100,
@@ -279,7 +279,7 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
       listener: (context, state) {
         if (state is VideoUploadSuccess) {
           setState(() {
-            _showHoveringUploadBox = false;
+            _openHoveringUploadBox = false;
             _selectedVideoPlatformFile = null;
             _selectedVideoFile = null;
           });
@@ -401,7 +401,7 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
 
   void _showHoveringUploadBox() {
     setState(() {
-      _showHoveringUploadBox = true;
+      _openHoveringUploadBox = true;
       _selectedVideoPlatformFile = null;
       _selectedVideoFile = null;
     });

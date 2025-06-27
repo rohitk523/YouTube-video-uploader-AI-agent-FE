@@ -23,6 +23,17 @@ class JobsListScreen extends StatefulWidget {
 }
 
 class _JobsListScreenState extends State<JobsListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Trigger initial load of jobs when screen is created
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<JobsBloc>().add(const LoadJobsEvent());
+      }
+    });
+  }
+
   Future<void> _downloadProcessedVideo(String jobId) async {
     try {
       if (mounted) {
@@ -88,9 +99,8 @@ class _JobsListScreenState extends State<JobsListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<JobsBloc>(
-      create: (context) => getIt<JobsBloc>()..add(const LoadJobsEvent()),
-      child: Scaffold(
+    // Use the existing JobsBloc from parent context instead of creating a new one
+    return Scaffold(
         appBar: AppBar(
           title: const Text('Processing Jobs'),
           backgroundColor: Colors.blue.shade600,
@@ -110,16 +120,51 @@ class _JobsListScreenState extends State<JobsListScreen> {
         ),
         body: BlocBuilder<JobsBloc, JobsState>(
           builder: (context, state) {
+            print('🎯 Jobs List BlocBuilder received state: ${state.runtimeType}');
+            print('📥 State details: $state');
+            print('📥 Is JobDeleted? ${state is JobDeleted}');
+            print('📥 State hashCode: ${state.hashCode}');
+            
+            // Handle JobDeleted state right in the builder to test
+            if (state is JobDeleted) {
+              print('🎉 SUCCESS! JobDeleted state received in BlocBuilder for job: ${state.jobId}');
+              
+              // Show success message
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Job deleted successfully!'),
+                    backgroundColor: Colors.green,
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 3),
+                  ),
+                );
+                
+                // Trigger refresh after showing snackbar
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  if (context.mounted) {
+                    print('🔄 Triggering jobs list refresh after delete success');
+                    context.read<JobsBloc>().add(LoadJobsEvent());
+                  }
+                });
+              });
+              
+              // Show loading while refresh is pending
+              return const Center(child: CircularProgressIndicator());
+            }
+            
             if (state is JobsLoading) {
               return const Center(
                 child: CircularProgressIndicator(),
               );
             } else if (state is JobsListLoaded) {
+              print('📋 JobsListLoaded received with ${state.jobs.length} jobs');
               if (state.jobs.isEmpty) {
                 return _buildEmptyState();
               }
               return _buildJobsList(state.jobs);
             } else if (state is JobsError) {
+              print('❌ Showing error: ${state.message}');
               return _buildErrorState(state.message);
             }
             return _buildEmptyState();
@@ -132,23 +177,18 @@ class _JobsListScreenState extends State<JobsListScreen> {
           backgroundColor: Colors.green.shade600,
           child: const Icon(Icons.add, color: Colors.white),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildJobsList(List<JobListItem> jobs) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        context.read<JobsBloc>().add(RefreshJobsEvent());
+    // Temporarily disable RefreshIndicator to test if it's causing the automatic refresh
+    return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemCount: jobs.length,
+      itemBuilder: (context, index) {
+        final job = jobs[index];
+        return _buildJobCard(job);
       },
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: jobs.length,
-        itemBuilder: (context, index) {
-          final job = jobs[index];
-          return _buildJobCard(job);
-        },
-      ),
     );
   }
 
@@ -516,20 +556,24 @@ class _JobsListScreenState extends State<JobsListScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                context.read<JobsBloc>().add(RefreshJobsEvent());
+            BlocBuilder<JobsBloc, JobsState>(
+              builder: (context, state) {
+                return ElevatedButton.icon(
+                  onPressed: () {
+                    context.read<JobsBloc>().add(RefreshJobsEvent());
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                );
               },
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
             ),
           ],
         ),
@@ -559,25 +603,27 @@ class _JobsListScreenState extends State<JobsListScreen> {
   }
 
   bool _canDelete(String status) {
-    return ['failed', 'completed'].contains(status.toLowerCase());
+    // Allow deletion for failed, completed, and pending jobs
+    // Don't allow deletion of currently processing jobs
+    return !['processing'].contains(status.toLowerCase());
   }
 
   void _showRetryDialog(JobListItem job) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Retry Job'),
         content: Text(
           'Are you sure you want to retry processing for "${job.title}"?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              Navigator.of(dialogContext).pop();
               // TODO: Implement retry functionality
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Retry functionality coming soon')),
@@ -594,22 +640,25 @@ class _JobsListScreenState extends State<JobsListScreen> {
   }
 
   void _showDeleteDialog(JobListItem job) {
+    final jobsBloc = context.read<JobsBloc>();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Job'),
         content: Text(
           'Are you sure you want to delete the job "${job.title}"? This action cannot be undone.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              context.read<JobsBloc>().add(DeleteJobEvent(job.id));
+              print('🗑️ User confirmed deletion for job: ${job.id}');
+              Navigator.of(dialogContext).pop();
+              print('🚀 Adding DeleteJobEvent to bloc');
+              jobsBloc.add(DeleteJobEvent(job.id));
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade600,
