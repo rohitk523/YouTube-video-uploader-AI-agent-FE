@@ -35,18 +35,18 @@ jobs:
         
     - name: Install dependencies
       run: |
-        cd youtube_shorts_frontend
+        cd YouTube-video-uploader-AI-agent-FE/youtube_shorts_frontend
         flutter pub get
         
     - name: Enable web support
       run: |
-        cd youtube_shorts_frontend
+        cd YouTube-video-uploader-AI-agent-FE/youtube_shorts_frontend
         flutter config --enable-web
         
     - name: Build web app
       run: |
-        cd youtube_shorts_frontend
-        flutter build web --release --web-renderer html --base-href="/YouTube-video-uploader-AI-agent-FE/"
+        cd YouTube-video-uploader-AI-agent-FE/youtube_shorts_frontend
+        flutter build web --release --web-renderer html --base-href="/YouTube-video-uploader_agent/"
         
     - name: Setup Pages
       uses: actions/configure-pages@v5
@@ -54,7 +54,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: 'youtube_shorts_frontend/build/web'
+        path: 'YouTube-video-uploader-AI-agent-FE/youtube_shorts_frontend/build/web'
 
   deploy:
     environment:
