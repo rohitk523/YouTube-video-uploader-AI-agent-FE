@@ -1,0 +1,22 @@
+services:
+  - type: static_site
+    name: youtube-shorts-frontend
+    buildCommand: |
+      # Install Flutter
+      git clone https://github.com/flutter/flutter.git -b stable
+      export PATH="$PATH:`pwd`/flutter/bin"
+      
+      # Configure Flutter
+      flutter doctor
+      flutter config --enable-web
+      
+      # Build the app
+      chmod +x build_production.sh
+      ./build_production.sh
+    
+    staticPublishPath: build/web
+    
+    # Environment variables for build
+    envVars:
+      - key: API_BASE_URL
+        value: https://youtube-video-uploader-ai-agent-be.onrender.com 
