@@ -19,7 +19,9 @@ import '../../jobs/bloc/jobs_state.dart';
 import '../../videos/widgets/video_selection_widget.dart';
 
 class CreateShortScreen extends StatefulWidget {
-  const CreateShortScreen({super.key});
+  final bool showAppBar;
+  
+  const CreateShortScreen({super.key, this.showAppBar = true});
 
   @override
   State<CreateShortScreen> createState() => _CreateShortScreenState();
@@ -71,11 +73,9 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _isWeb(context) ? const Color(0xFFF8FAFC) : null,
-      appBar: _isWeb(context) ? null : AppBar(
+      backgroundColor: _isWeb(context) ? Theme.of(context).scaffoldBackgroundColor : null,
+      appBar: (!widget.showAppBar || _isWeb(context)) ? null : AppBar(
         title: const Text('Create YouTube Short'),
-        backgroundColor: Colors.blue.shade600,
-        foregroundColor: Colors.white,
       ),
       body: BlocListener<JobsBloc, JobsState>(
         listener: (context, state) {
@@ -132,150 +132,47 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
   }
 
   Widget _buildWebLayout() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.blue.shade50,
-            Colors.white,
-          ],
-        ),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(32),
-        child: Row(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        key: _formKey,
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left Panel - Configuration
-            Expanded(
-              flex: 2,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(32),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildWebStepCard(
-                          stepNumber: 1,
-                          title: 'Video Details',
-                          child: _buildDetailsSection(),
-                        ),
-                        const SizedBox(height: 32),
-                        _buildWebStepCard(
-                          stepNumber: 2,
-                          title: 'Select Your Video',
-                          child: _buildVideoSection(),
-                        ),
-                        const SizedBox(height: 32),
-                        _buildWebStepCard(
-                          stepNumber: 3,
-                          title: 'Add Your Script',
-                          child: _buildTranscriptSection(),
-                        ),
-                        const SizedBox(height: 32),
-                        _buildWebStepCard(
-                          stepNumber: 4,
-                          title: 'Advanced Options',
-                          child: _buildOptionsSection(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            // Compact Step Cards
+            _buildCompactStepCard(
+              stepNumber: 1,
+              title: 'Video Details',
+              child: _buildDetailsSection(),
             ),
-            
-            const SizedBox(width: 32),
-            
-            // Right Panel - Preview & Actions
-            Expanded(
-              flex: 1,
-              child: Column(
-                children: [
-                  // Status Panel
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 20,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Creation Status',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        _buildWebStatusIndicators(),
-                        const SizedBox(height: 32),
-                        _buildWebActionButton(),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Video Preview Panel (if video selected)
-                  if (_selectedS3Video != null || _videoUploadResponse != null)
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 20,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Video Preview',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildVideoPreview(),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+            const SizedBox(height: 16),
+            _buildCompactStepCard(
+              stepNumber: 2,
+              title: 'Select Your Video',
+              child: _buildVideoSection(),
             ),
+            const SizedBox(height: 16),
+            _buildCompactStepCard(
+              stepNumber: 3,
+              title: 'Add Your Script',
+              child: _buildTranscriptSection(),
+            ),
+            const SizedBox(height: 16),
+            _buildCompactStepCard(
+              stepNumber: 4,
+              title: 'Advanced Options',
+              child: _buildOptionsSection(),
+            ),
+            const SizedBox(height: 24),
+            
+            // Creation Status Section (Inline)
+            _buildCompactStatusSection(),
+            
+            const SizedBox(height: 24),
+            
+            // Video Preview (if video selected)
+            if (_selectedS3Video != null || _videoUploadResponse != null)
+              _buildCompactVideoPreview(),
           ],
         ),
       ),
@@ -305,54 +202,179 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
     );
   }
 
-  Widget _buildWebStepCard({
+  Widget _buildCompactStepCard({
     required int stepNumber,
     required String title,
     required Widget child,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade600,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                  child: Text(
-                    stepNumber.toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+    return Card(
+      margin: const EdgeInsets.all(0),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      stepNumber.toString(),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactStatusSection() {
+    final hasVideo = _videoUploadResponse != null || _selectedS3Video != null;
+    final hasTranscript = _isTranscriptFromText 
+        ? _transcriptController.text.trim().isNotEmpty
+        : _transcriptUploadResponse != null;
+    
+    return Card(
+      margin: const EdgeInsets.all(0),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Creation Status',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
-            ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactStatusItem(
+                    icon: hasVideo ? Icons.check_circle : Icons.video_file,
+                    label: 'Video',
+                    isReady: hasVideo,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildCompactStatusItem(
+                    icon: hasTranscript ? Icons.check_circle : Icons.text_fields,
+                    label: 'Script',
+                    isReady: hasTranscript,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildCompactStatusItem(
+                    icon: _titleController.text.isNotEmpty ? Icons.check_circle : Icons.title,
+                    label: 'Title',
+                    isReady: _titleController.text.isNotEmpty,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: _buildWebActionButton(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactStatusItem({
+    required IconData icon,
+    required String label,
+    required bool isReady,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isReady 
+          ? const Color(0xFF059669).withOpacity(0.1)
+          : const Color(0xFFD97706).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isReady 
+            ? const Color(0xFF059669).withOpacity(0.3)
+            : const Color(0xFFD97706).withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: isReady ? const Color(0xFF059669) : const Color(0xFFD97706),
+            size: 20,
           ),
-          const SizedBox(height: 20),
-          child,
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: isReady ? const Color(0xFF059669) : const Color(0xFFD97706),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            isReady ? 'Ready' : 'Required',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: 10,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
+            textAlign: TextAlign.center,
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCompactVideoPreview() {
+    return Card(
+      margin: const EdgeInsets.all(0),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Video Preview',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildVideoPreview(),
+          ],
+        ),
       ),
     );
   }
@@ -398,17 +420,21 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isReady ? Colors.green.shade50 : Colors.orange.shade50,
+        color: isReady 
+          ? const Color(0xFF059669).withOpacity(0.1)
+          : const Color(0xFFD97706).withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isReady ? Colors.green.shade200 : Colors.orange.shade200,
+          color: isReady 
+            ? const Color(0xFF059669).withOpacity(0.3)
+            : const Color(0xFFD97706).withOpacity(0.3),
         ),
       ),
       child: Row(
         children: [
           Icon(
             icon,
-            color: isReady ? Colors.green.shade600 : Colors.orange.shade600,
+            color: isReady ? const Color(0xFF059669) : const Color(0xFFD97706),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -417,15 +443,16 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   status,
                   style: TextStyle(
                     fontSize: 12,
-                    color: isReady ? Colors.green.shade700 : Colors.orange.shade700,
+                    color: isReady ? const Color(0xFF059669) : const Color(0xFFD97706),
                   ),
                 ),
               ],
@@ -497,8 +524,13 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
       return Container(
         height: 200,
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark 
+              ? const Color(0xFF2D2D2D) 
+              : const Color(0xFFE5E7EB),
+          ),
         ),
         child: _selectedS3Video!.thumbnailUrl != null
             ? ClipRRect(
@@ -523,17 +555,25 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
     return Container(
       height: 200,
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark 
+            ? const Color(0xFF2D2D2D) 
+            : const Color(0xFFE5E7EB),
+        ),
       ),
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.video_call, size: 48, color: Colors.grey),
-            SizedBox(height: 8),
-            Text('Select a video to see preview'),
+            Icon(
+              Icons.video_call, 
+              size: 48, 
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            ),
+            const SizedBox(height: 8),
+            const Text('Select a video to see preview'),
           ],
         ),
       ),
@@ -794,17 +834,21 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                     height: 200,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade200),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark 
+                          ? const Color(0xFF2D2D2D) 
+                          : const Color(0xFFE5E7EB),
+                      ),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.video_file,
                           size: 48,
-                          color: Colors.green,
+                          color: const Color(0xFF059669),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -829,8 +873,10 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            border: Border.all(color: Colors.blue.shade200),
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                            ),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
@@ -884,13 +930,21 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade200),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark 
+                          ? const Color(0xFF2D2D2D) 
+                          : const Color(0xFFE5E7EB),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.video_file, color: Colors.grey.shade600, size: 16),
+                        Icon(
+                          Icons.video_file, 
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), 
+                          size: 16,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -925,13 +979,15 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.green.shade50,
+                              color: const Color(0xFF059669).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green.shade200),
+                              border: Border.all(
+                                color: const Color(0xFF059669).withOpacity(0.3),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.check_circle, color: Colors.green.shade600),
+                                Icon(Icons.check_circle, color: const Color(0xFF059669)),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
@@ -1197,13 +1253,15 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.green.shade50,
+                                color: const Color(0xFF059669).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.green.shade200),
+                                border: Border.all(
+                                  color: const Color(0xFF059669).withOpacity(0.3),
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.check_circle, color: Colors.green.shade600),
+                                  Icon(Icons.check_circle, color: const Color(0xFF059669)),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Column(

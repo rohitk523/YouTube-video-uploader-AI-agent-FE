@@ -16,7 +16,9 @@ import '../../../core/network/api_client.dart';
 import 'job_details_screen.dart';
 
 class JobsListScreen extends StatefulWidget {
-  const JobsListScreen({super.key});
+  final bool showAppBar;
+  
+  const JobsListScreen({super.key, this.showAppBar = true});
 
   @override
   State<JobsListScreen> createState() => _JobsListScreenState();
@@ -85,7 +87,6 @@ class _JobsListScreenState extends State<JobsListScreen> {
         );
       }
     } catch (error) {
-      print('Download error: $error');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -101,10 +102,8 @@ class _JobsListScreenState extends State<JobsListScreen> {
   Widget build(BuildContext context) {
     // Use the existing JobsBloc from parent context instead of creating a new one
     return Scaffold(
-        appBar: AppBar(
+        appBar: widget.showAppBar ? AppBar(
           title: const Text('Processing Jobs'),
-          backgroundColor: Colors.blue.shade600,
-          foregroundColor: Colors.white,
           actions: [
             BlocBuilder<JobsBloc, JobsState>(
               builder: (context, state) {
@@ -117,17 +116,11 @@ class _JobsListScreenState extends State<JobsListScreen> {
               },
             ),
           ],
-        ),
+        ) : null,
         body: BlocBuilder<JobsBloc, JobsState>(
           builder: (context, state) {
-            print('🎯 Jobs List BlocBuilder received state: ${state.runtimeType}');
-            print('📥 State details: $state');
-            print('📥 Is JobDeleted? ${state is JobDeleted}');
-            print('📥 State hashCode: ${state.hashCode}');
-            
             // Handle JobDeleted state right in the builder to test
             if (state is JobDeleted) {
-              print('🎉 SUCCESS! JobDeleted state received in BlocBuilder for job: ${state.jobId}');
               
               // Show success message
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -143,7 +136,6 @@ class _JobsListScreenState extends State<JobsListScreen> {
                 // Trigger refresh after showing snackbar
                 Future.delayed(const Duration(milliseconds: 500), () {
                   if (context.mounted) {
-                    print('🔄 Triggering jobs list refresh after delete success');
                     context.read<JobsBloc>().add(LoadJobsEvent());
                   }
                 });
@@ -158,44 +150,41 @@ class _JobsListScreenState extends State<JobsListScreen> {
                 child: CircularProgressIndicator(),
               );
             } else if (state is JobsListLoaded) {
-              print('📋 JobsListLoaded received with ${state.jobs.length} jobs');
               if (state.jobs.isEmpty) {
                 return _buildEmptyState();
               }
               return _buildJobsList(state.jobs);
             } else if (state is JobsError) {
-              print('❌ Showing error: ${state.message}');
               return _buildErrorState(state.message);
             }
             return _buildEmptyState();
           },
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.of(context).pushNamed('/create-short');
-          },
-          backgroundColor: Colors.green.shade600,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
       );
   }
 
   Widget _buildJobsList(List<JobListItem> jobs) {
-    // Temporarily disable RefreshIndicator to test if it's causing the automatic refresh
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: jobs.length,
-      itemBuilder: (context, index) {
-        final job = jobs[index];
-        return _buildJobCard(job);
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<JobsBloc>().add(RefreshJobsEvent());
       },
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        itemCount: jobs.length,
+        itemBuilder: (context, index) {
+          final job = jobs[index];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16.0),
+            child: _buildJobCard(job),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildJobCard(JobListItem job) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12.0),
-      elevation: 3,
+      margin: const EdgeInsets.all(0),
       child: InkWell(
         onTap: () {
           Navigator.of(context).push(
@@ -204,9 +193,9 @@ class _JobsListScreenState extends State<JobsListScreen> {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -483,40 +472,32 @@ class _JobsListScreenState extends State<JobsListScreen> {
             Icon(
               Icons.work_outline,
               size: 80,
-              color: Colors.grey.shade400,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
               'No Jobs Yet',
-              style: TextStyle(
-                fontSize: 24,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade600,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
               'Create your first YouTube Short to see processing jobs here.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontSize: 16,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               ),
             ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
+            const SizedBox(height: 32),
+            FilledButton.icon(
               onPressed: () {
                 Navigator.of(context).pushNamed('/create-short');
               },
               icon: const Icon(Icons.add),
               label: const Text('Create Short'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF059669),
               ),
             ),
           ],
@@ -535,43 +516,33 @@ class _JobsListScreenState extends State<JobsListScreen> {
             Icon(
               Icons.error_outline,
               size: 80,
-              color: Colors.red.shade400,
+              color: const Color(0xFFDC2626),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
               'Error Loading Jobs',
-              style: TextStyle(
-                fontSize: 24,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.red.shade600,
+                color: const Color(0xFFDC2626),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.red.shade500,
-                fontSize: 16,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             BlocBuilder<JobsBloc, JobsState>(
               builder: (context, state) {
-                return ElevatedButton.icon(
+                return FilledButton.icon(
                   onPressed: () {
                     context.read<JobsBloc>().add(RefreshJobsEvent());
                   },
                   icon: const Icon(Icons.refresh),
                   label: const Text('Retry'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade600,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
                 );
               },
             ),
@@ -655,9 +626,7 @@ class _JobsListScreenState extends State<JobsListScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              print('🗑️ User confirmed deletion for job: ${job.id}');
               Navigator.of(dialogContext).pop();
-              print('🚀 Adding DeleteJobEvent to bloc');
               jobsBloc.add(DeleteJobEvent(job.id));
             },
             style: ElevatedButton.styleFrom(

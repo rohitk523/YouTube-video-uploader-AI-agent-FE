@@ -53,12 +53,6 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
                   children: [
                     const Text('Select Video', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const Spacer(),
-                    TextButton.icon(
-                      onPressed: () => _showAllVideosDialog(context),
-                      icon: const Icon(Icons.library_music),
-                      label: const Text('Browse All'),
-                    ),
-                    const SizedBox(width: 8),
                     // Floating Upload Button
                     ElevatedButton.icon(
                       onPressed: () => _showHoveringUploadBox(),
@@ -117,40 +111,52 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
             ),
             child: Container(
               width: double.infinity,
-              constraints: const BoxConstraints(maxWidth: 500, maxHeight: 400),
-              padding: const EdgeInsets.all(24),
+              constraints: const BoxConstraints(maxWidth: 500, maxHeight: 500),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header
-                  Row(
-                    children: [
-                      Icon(Icons.cloud_upload, color: Colors.blue.shade600, size: 28),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Quick Video Upload',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () => setState(() => _openHoveringUploadBox = false),
-                        icon: const Icon(Icons.close),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.grey.shade100,
+                  // Header - Fixed
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.cloud_upload, color: Colors.blue.shade600, size: 28),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Quick Video Upload',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    ],
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => setState(() => _openHoveringUploadBox = false),
+                          icon: const Icon(Icons.close),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.grey.shade100,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
                   
-                  // Upload Area
-                  if (_selectedVideoPlatformFile == null) ...[
-                    _buildUploadDropZone(),
-                  ] else ...[
-                    _buildSelectedFileDisplay(),
-                    const SizedBox(height: 16),
-                    _buildUploadActions(),
-                  ],
+                  // Scrollable Content Area
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Upload Area
+                          if (_selectedVideoPlatformFile == null) ...[
+                            _buildCompactUploadDropZone(),
+                          ] else ...[
+                            _buildSelectedFileDisplay(),
+                            const SizedBox(height: 16),
+                            _buildUploadActions(),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -217,6 +223,75 @@ class _VideoSelectionWidgetState extends State<VideoSelectionWidget> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactUploadDropZone() {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 120),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Colors.blue.shade300,
+          width: 2,
+          style: BorderStyle.solid,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.blue.shade50,
+      ),
+      child: InkWell(
+        onTap: _pickVideoFile,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.video_call,
+                size: 36,
+                color: Colors.blue.shade600,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tap to select video file',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue.shade700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'MP4, MOV, AVI',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.blue.shade600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade600,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  'Choose File',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
