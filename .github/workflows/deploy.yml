@@ -46,7 +46,10 @@ jobs:
     - name: Build web app
       run: |
         cd youtube_shorts_frontend
-        flutter build web --release --base-href="/YouTube-video-uploader-AI-agent-FE/"
+        flutter build web --release --base-href="/YouTube-video-uploader-AI-agent-FE/" --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL || 'https://your-backend-domain.com' }} --dart-define=FLUTTER_ENV=production
+      env:
+        API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        FLUTTER_ENV: production
         
     - name: Setup Pages
       uses: actions/configure-pages@v5
