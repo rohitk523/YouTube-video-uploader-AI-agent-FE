@@ -2,6 +2,9 @@ services:
   - type: static_site
     name: youtube-shorts-frontend
     buildCommand: |
+      # Navigate to Flutter project directory
+      cd youtube_shorts_frontend
+      
       # Install Flutter
       git clone https://github.com/flutter/flutter.git -b stable
       export PATH="$PATH:`pwd`/flutter/bin"
@@ -14,7 +17,7 @@ services:
       chmod +x build_production.sh
       ./build_production.sh
     
-    staticPublishPath: build/web
+    staticPublishPath: youtube_shorts_frontend/build/web
     
     # Environment variables for build
     envVars:

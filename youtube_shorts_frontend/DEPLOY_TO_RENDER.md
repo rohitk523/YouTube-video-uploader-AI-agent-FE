@@ -10,14 +10,14 @@ Make sure your frontend code is in a GitHub repository.
 ### 2. Connect to Render
 1. Go to [Render Dashboard](https://dashboard.render.com)
 2. Click "New +" → "Static Site"
-3. Connect your GitHub repository
-4. Select the `YouTube-video-uploader-AI-agent-FE/youtube_shorts_frontend` directory
+3. Connect your GitHub repository: `YouTube-video-uploader-AI-agent-FE`
+4. Render will automatically detect the `render.yaml` at the repository root
 
 ### 3. Configure Build Settings
 Render will automatically detect the `render.yaml` file and configure:
 
-- **Build Command**: Installs Flutter and builds the web app
-- **Publish Directory**: `build/web`
+- **Build Command**: Navigates to `youtube_shorts_frontend/`, installs Flutter and builds the web app
+- **Publish Directory**: `youtube_shorts_frontend/build/web`
 - **API URL**: Points to your backend at `https://youtube-video-uploader-ai-agent-be.onrender.com`
 
 ### 4. Deploy
@@ -45,6 +45,7 @@ The build uses these settings:
 
 To test the production build locally:
 ```bash
+cd youtube_shorts_frontend
 chmod +x build_production.sh
 ./build_production.sh
 cd build/web
