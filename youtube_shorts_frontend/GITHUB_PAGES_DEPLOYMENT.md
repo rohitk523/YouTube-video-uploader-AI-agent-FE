@@ -35,10 +35,10 @@ After setting up GitHub Pages:
 
 The workflow:
 - ✅ Triggers on push to `main` branch
-- ✅ Sets up Flutter 3.24.0 (latest stable)
+- ✅ Sets up Flutter 3.32.2 (latest stable)
 - ✅ Navigates to `youtube_shorts_frontend/` directory
 - ✅ Installs dependencies
-- ✅ Builds the web app with proper base href
+- ✅ Builds the web app with proper base href (auto web renderer)
 - ✅ Uses latest GitHub Actions (v4/v5) for deployment
 
 ## Monitoring Deployments
@@ -76,4 +76,6 @@ cd build/web
 python -m http.server 8000
 ```
 
-Then visit `http://localhost:8000` to test your app. 
+Then visit `http://localhost:8000` to test your app.
+
+**Note**: The `--web-renderer` flag has been removed as it's deprecated in Flutter 3.32.2+. Flutter now automatically selects the best renderer. 

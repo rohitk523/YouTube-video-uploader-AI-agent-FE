@@ -46,7 +46,7 @@ jobs:
     - name: Build web app
       run: |
         cd youtube_shorts_frontend
-        flutter build web --release --web-renderer html --base-href="/YouTube-video-uploader-AI-agent-FE/"
+        flutter build web --release --base-href="/YouTube-video-uploader-AI-agent-FE/"
         
     - name: Setup Pages
       uses: actions/configure-pages@v5
