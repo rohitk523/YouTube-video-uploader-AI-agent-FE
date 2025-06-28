@@ -35,11 +35,11 @@ After setting up GitHub Pages:
 
 The workflow:
 - ✅ Triggers on push to `main` branch
-- ✅ Sets up Flutter 3.19.0
+- ✅ Sets up Flutter 3.24.0 (latest stable)
 - ✅ Navigates to `youtube_shorts_frontend/` directory
 - ✅ Installs dependencies
 - ✅ Builds the web app with proper base href
-- ✅ Deploys to GitHub Pages
+- ✅ Uses latest GitHub Actions (v4/v5) for deployment
 
 ## Monitoring Deployments
 
