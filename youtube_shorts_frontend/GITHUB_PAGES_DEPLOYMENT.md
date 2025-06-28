@@ -8,10 +8,24 @@ This guide explains how to deploy your Flutter web app to GitHub Pages using the
 The following files have been created for you:
 - `.github/workflows/deploy.yml` - GitHub Actions workflow (at repository root)
 - `youtube_shorts_frontend/web/.nojekyll` - Prevents Jekyll processing
+- `youtube_shorts_frontend/lib/core/config/environment.dart` - Environment configuration
+- `youtube_shorts_frontend/ENVIRONMENT_SETUP.md` - Detailed environment setup guide
 
 Make sure to commit and push these files to your repository.
 
-### 2. Enable GitHub Pages in Repository Settings
+### 2. Configure Backend URL (IMPORTANT!)
+
+Your Flutter app needs to know your production backend URL. See `ENVIRONMENT_SETUP.md` for detailed instructions.
+
+**Quick Setup:**
+1. Go to your GitHub repository
+2. Navigate to **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret**
+4. Add secret:
+   - **Name**: `API_BASE_URL`
+   - **Value**: Your production backend URL (e.g., `https://your-backend.onrender.com`)
+
+### 3. Enable GitHub Pages in Repository Settings
 
 1. Go to your GitHub repository
 2. Navigate to **Settings** → **Pages** (in the left sidebar)
@@ -25,11 +39,13 @@ The workflow is configured for your repository structure:
 - The base href is set to: `/YouTube-video-uploader-AI-agent-FE/`
 
 ### 4. First Deployment
-After setting up GitHub Pages:
+After setting up GitHub Pages and backend URL:
 1. Make any small change to your Flutter code
 2. Commit and push to the `main` branch
 3. The workflow will automatically run and deploy your app
 4. Your app will be available at: `https://yourusername.github.io/YouTube-video-uploader-AI-agent-FE/`
+
+**Note**: Without setting `API_BASE_URL`, your app will try to connect to `https://your-backend-domain.com` (placeholder URL).
 
 ## Workflow Details
 
@@ -38,6 +54,7 @@ The workflow:
 - ✅ Sets up Flutter 3.32.2 (latest stable)
 - ✅ Navigates to `youtube_shorts_frontend/` directory
 - ✅ Installs dependencies
+- ✅ Configures production environment with backend URL
 - ✅ Builds the web app with proper base href (auto web renderer)
 - ✅ Uses latest GitHub Actions (v4/v5) for deployment
 
