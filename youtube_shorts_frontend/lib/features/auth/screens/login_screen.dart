@@ -7,6 +7,7 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import '../repository/health_service.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -426,7 +427,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            Navigator.of(context).pushNamed(AppRouter.register);
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                            );
                           },
                           child: Text(
                             'Sign Up',
