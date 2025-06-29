@@ -6,6 +6,7 @@ import '../../../shared/models/user_models.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+import '../repository/health_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,6 +21,20 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  
+  // Health check related variables
+  HealthStatus _healthStatus = HealthStatus.unknown;
+  bool _isCheckingHealth = false;
+  final HealthService _healthService = HealthService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Perform initial health check
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkBackendHealth();
+    });
+  }
 
   @override
   void dispose() {
@@ -28,7 +43,63 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _checkBackendHealth() async {
+    setState(() {
+      _isCheckingHealth = true;
+      _healthStatus = HealthStatus.checking;
+    });
+    
+    try {
+      final isHealthy = await _healthService.checkHealth(
+        timeout: const Duration(seconds: 30),
+      );
+      
+      setState(() {
+        _healthStatus = isHealthy ? HealthStatus.healthy : HealthStatus.unhealthy;
+        _isCheckingHealth = false;
+      });
+      
+      if (isHealthy) {
+        Fluttertoast.showToast(
+          msg: "Backend is ready! You can now login.",
+          toastLength: Toast.LENGTH_LONG,
+          backgroundColor: Colors.green,
+          textColor: Colors.white,
+        );
+      } else {
+        Fluttertoast.showToast(
+          msg: "Backend is not responding. Please try again.",
+          toastLength: Toast.LENGTH_LONG,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _healthStatus = HealthStatus.unhealthy;
+        _isCheckingHealth = false;
+      });
+      
+      Fluttertoast.showToast(
+        msg: "Failed to check backend status. Please try again.",
+        toastLength: Toast.LENGTH_LONG,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+    }
+  }
+
   void _login() {
+    if (_healthStatus != HealthStatus.healthy) {
+      Fluttertoast.showToast(
+        msg: "Please check backend status first by tapping the refresh button.",
+        toastLength: Toast.LENGTH_LONG,
+        backgroundColor: Colors.orange,
+        textColor: Colors.white,
+      );
+      return;
+    }
+    
     if (_formKey.currentState?.validate() ?? false) {
       final request = UserLoginRequest(
         email: _emailController.text.trim(),
@@ -39,9 +110,109 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Color _getHealthStatusColor() {
+    switch (_healthStatus) {
+      case HealthStatus.healthy:
+        return Colors.green;
+      case HealthStatus.unhealthy:
+        return Colors.red;
+      case HealthStatus.checking:
+        return Colors.orange;
+      case HealthStatus.unknown:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getHealthStatusIcon() {
+    switch (_healthStatus) {
+      case HealthStatus.healthy:
+        return Icons.check_circle;
+      case HealthStatus.unhealthy:
+        return Icons.error;
+      case HealthStatus.checking:
+        return Icons.hourglass_empty;
+      case HealthStatus.unknown:
+        return Icons.help_outline;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0, top: 8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: _isCheckingHealth ? null : _checkBackendHealth,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _isCheckingHealth
+                            ? SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    _getHealthStatusColor(),
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                _getHealthStatusIcon(),
+                                color: _getHealthStatusColor(),
+                                size: 16,
+                              ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.refresh,
+                          color: _isCheckingHealth ? Colors.grey : Colors.black,
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _healthStatus == HealthStatus.unknown
+                      ? 'Check Status'
+                      : _healthStatus == HealthStatus.checking
+                          ? 'Checking...'
+                          : _healthStatus == HealthStatus.healthy
+                              ? 'Ready'
+                              : 'Offline',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: _getHealthStatusColor(),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           setState(() {
@@ -107,6 +278,42 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     
                     const SizedBox(height: 48),
+                    
+                    // Health check status info
+                    if (_healthStatus != HealthStatus.healthy && _healthStatus != HealthStatus.unknown)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: _getHealthStatusColor().withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _getHealthStatusColor().withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _getHealthStatusIcon(),
+                              color: _getHealthStatusColor(),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _healthStatus == HealthStatus.checking
+                                    ? 'Checking backend server status...'
+                                    : 'Backend server is not responding. Please tap the refresh button in the top-right corner to check again.',
+                                style: TextStyle(
+                                  color: _getHealthStatusColor(),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     
                     // Login Form
                     Form(
@@ -174,7 +381,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: double.infinity,
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: _isLoading ? null : _login,
+                              onPressed: (_isLoading || _healthStatus != HealthStatus.healthy) ? null : _login,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _healthStatus == HealthStatus.healthy 
+                                    ? null 
+                                    : Colors.grey[300],
+                                foregroundColor: _healthStatus == HealthStatus.healthy 
+                                    ? null 
+                                    : Colors.grey[600],
+                              ),
                               child: _isLoading
                                   ? const SizedBox(
                                       width: 20,
@@ -184,9 +399,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                       ),
                                     )
-                                  : const Text(
-                                      'Sign In',
-                                      style: TextStyle(
+                                  : Text(
+                                      _healthStatus == HealthStatus.healthy 
+                                          ? 'Sign In'
+                                          : 'Check Backend Status First',
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                       ),
