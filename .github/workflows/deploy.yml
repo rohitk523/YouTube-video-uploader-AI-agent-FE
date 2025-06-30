@@ -46,7 +46,7 @@ jobs:
     - name: Build web app
       run: |
         cd youtube_shorts_frontend
-        flutter build web --release --base-href="/" --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL || 'https://your-backend-domain.com' }} --dart-define=FLUTTER_ENV=production
+        flutter build web --release --base-href="/" --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL || 'https://youtube-video-uploader-ai-agent-be.onrender.com' }} --dart-define=FLUTTER_ENV=production
       env:
         API_BASE_URL: ${{ secrets.API_BASE_URL }}
         FLUTTER_ENV: production
