@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/di/service_locator.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class VoicePreviewWidget extends StatefulWidget {
   final List<String> availableVoices;
@@ -22,13 +23,15 @@ class VoicePreviewWidget extends StatefulWidget {
 }
 
 class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
   final ApiClient _apiClient = getIt<ApiClient>();
   
   String? _currentlyPlaying;
   bool _isLoading = false;
   Map<String, String> _voiceDescriptions = {};
   Map<String, bool> _voiceLoadingStates = {};
+  
+  // Web-safe audio player using HTML5 audio
+  dynamic _currentAudioElement;
 
   // Voice information with descriptions and styles
   final Map<String, Map<String, dynamic>> _voiceInfo = {
@@ -79,34 +82,24 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
   @override
   void initState() {
     super.initState();
-    _setupAudioPlayer();
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    _stopVoicePreview();
     super.dispose();
-  }
-
-  void _setupAudioPlayer() {
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (state == PlayerState.completed) {
-        setState(() {
-          _currentlyPlaying = null;
-        });
-      }
-    });
   }
 
   Future<void> _playVoicePreview(String voice) async {
     try {
       // Stop any currently playing audio
       if (_currentlyPlaying != null) {
-        await _audioPlayer.stop();
+        _stopVoicePreview();
       }
 
       setState(() {
         _voiceLoadingStates[voice] = true;
+        _currentlyPlaying = voice;
       });
 
       // Use custom text if available, otherwise use default
@@ -120,23 +113,73 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
         customText: previewText,
       );
 
-      // Play the audio
-      await _audioPlayer.play(UrlSource(audioUrl));
+      // For web platform, open audio in new window for preview
+      if (kIsWeb) {
+        // Create a temporary audio element for web
+        if (_currentAudioElement != null) {
+          _currentAudioElement.pause();
+        }
+        
+        // Show preview notification
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Opening voice preview for ${voice.toUpperCase()}...'),
+              backgroundColor: Colors.blue,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        
+        // Open audio URL in new tab for preview
+        final uri = Uri.parse(audioUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      } else {
+        // For mobile platforms, show download option
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Voice preview: ${voice.toUpperCase()}'),
+              backgroundColor: Colors.blue,
+              action: SnackBarAction(
+                label: 'Download',
+                onPressed: () async {
+                  final uri = Uri.parse(audioUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  }
+                },
+              ),
+            ),
+          );
+        }
+      }
 
       setState(() {
-        _currentlyPlaying = voice;
         _voiceLoadingStates[voice] = false;
+      });
+
+      // Auto-reset playing state after 3 seconds
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted && _currentlyPlaying == voice) {
+          setState(() {
+            _currentlyPlaying = null;
+          });
+        }
       });
 
     } catch (e) {
       setState(() {
         _voiceLoadingStates[voice] = false;
+        _currentlyPlaying = null;
       });
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to play voice preview: ${e.toString()}'),
+            content: Text('Failed to load voice preview. Please try again.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -144,8 +187,16 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
     }
   }
 
-  Future<void> _stopVoicePreview() async {
-    await _audioPlayer.stop();
+  void _stopVoicePreview() {
+    if (_currentAudioElement != null) {
+      try {
+        _currentAudioElement.pause();
+      } catch (e) {
+        // Ignore errors on cleanup
+      }
+      _currentAudioElement = null;
+    }
+    
     setState(() {
       _currentlyPlaying = null;
     });
@@ -213,20 +264,15 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
             ),
             const SizedBox(height: 20),
             
-            // Voice Grid
-            GridView.builder(
+            // Voice List
+            ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.2,
-              ),
               itemCount: widget.availableVoices.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final voice = widget.availableVoices[index];
-                return _buildVoiceCard(voice);
+                return _buildVoiceListItem(voice);
               },
             ),
           ],
@@ -235,7 +281,7 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
     );
   }
 
-  Widget _buildVoiceCard(String voice) {
+  Widget _buildVoiceListItem(String voice) {
     final voiceInfo = _voiceInfo[voice] ?? {
       'name': voice.toUpperCase(),
       'description': 'AI generated voice',
@@ -276,112 +322,105 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Row(
             children: [
-              // Voice Icon and Play Button
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: voiceInfo['color'].withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(25),
+              // Voice Icon
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: voiceInfo['color'].withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: Icon(
+                  voiceInfo['icon'],
+                  color: voiceInfo['color'],
+                  size: 24,
+                ),
+              ),
+              
+              const SizedBox(width: 16),
+              
+              // Voice Information
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          voiceInfo['name'],
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? voiceInfo['color'] : Colors.grey[800],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: voiceInfo['color'].withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            voiceInfo['style'],
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: voiceInfo['color'],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Icon(
-                      voiceInfo['icon'],
-                      color: voiceInfo['color'],
-                      size: 24,
-                    ),
-                  ),
-                  if (isLoading)
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(25),
+                    
+                    const SizedBox(height: 6),
+                    
+                    Text(
+                      voiceInfo['description'],
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
                       ),
-                      child: const SizedBox(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 16),
+              
+              // Play Button
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: isSelected ? voiceInfo['color'] : Colors.grey[400],
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isSelected ? voiceInfo['color'] : Colors.grey[400]!).withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: isLoading
+                    ? const SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
-                      ),
-                    )
-                  else if (isPlaying)
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: const Icon(
-                        Icons.stop,
+                      )
+                    : Icon(
+                        isPlaying ? Icons.stop : Icons.play_arrow,
                         color: Colors.white,
-                        size: 20,
+                        size: 24,
                       ),
-                    )
-                  else
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                ],
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Voice Name
-              Text(
-                voiceInfo['name'],
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? voiceInfo['color'] : Colors.grey[800],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              const SizedBox(height: 4),
-              
-              // Voice Style
-              Text(
-                voiceInfo['style'],
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: isSelected ? voiceInfo['color'] : Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              const SizedBox(height: 8),
-              
-              // Voice Description
-              Text(
-                voiceInfo['description'],
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -389,4 +428,6 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
       ),
     );
   }
+
+
 } 

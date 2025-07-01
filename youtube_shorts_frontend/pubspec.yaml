@@ -61,10 +61,7 @@ dependencies:
   # Video player (for preview)
   video_player: ^2.8.1
   
-  # Audio player (for voice previews)
-  audioplayers: ^5.2.1
-  
-  # URL launcher (for YouTube links)
+  # URL launcher (for YouTube links & voice previews)
   url_launcher: ^6.2.1
   
   # Image caching
