@@ -433,7 +433,11 @@ class ApiClient {
         );
       });
       
-      return response.data;
+      if (response.data == null) {
+        throw Exception('Voice preview response data is null');
+      }
+      
+      return response.data!;
     } catch (e) {
       print('Error generating voice preview: $e');
       rethrow;
@@ -478,7 +482,11 @@ class ApiClient {
         );
       });
       
-      return response.data;
+      if (response.data == null) {
+        throw Exception('Custom voice preview response data is null');
+      }
+      
+      return response.data!;
     } catch (e) {
       print('Error generating custom voice preview: $e');
       rethrow;
