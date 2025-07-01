@@ -148,17 +148,31 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildDesktopLayout() {
-    return Row(
+    return Stack(
       children: [
-        // Left Panel - Branding
-        Expanded(
-          flex: 1,
-          child: _buildLeftPanel(),
+        // Background layout
+        Row(
+          children: [
+            // Left Panel - Branding
+            Expanded(
+              flex: 1,
+              child: _buildLeftPanel(),
+            ),
+            // Right Panel - Background
+            Expanded(
+              flex: 1,
+              child: Container(
+                color: Colors.white,
+              ),
+            ),
+          ],
         ),
-        // Right Panel - Login Form
-        Expanded(
-          flex: 1,
-          child: _buildRightPanel(),
+        // Centered Login Form
+        Center(
+          child: Container(
+            width: 400,
+            child: _buildLoginForm(),
+          ),
         ),
       ],
     );
@@ -169,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         children: [
           Container(
-            height: MediaQuery.of(context).size.height * 0.3,
+            height: MediaQuery.of(context).size.height * 0.25,
             child: _buildLeftPanel(),
           ),
           Container(
@@ -284,24 +298,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildRightPanel() {
-    return Container(
-      color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(48.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: _buildLoginForm(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildLoginForm() {
     return Container(
