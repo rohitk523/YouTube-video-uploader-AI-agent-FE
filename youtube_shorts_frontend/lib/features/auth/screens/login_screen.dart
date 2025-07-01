@@ -249,14 +249,31 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // BALA Brand
+            // Brand Logo/Icon
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.video_library_outlined,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // Brand Name
             Text(
-              'BALA',
+              'ShortsStudio',
               style: TextStyle(
-                fontSize: 32,
+                fontSize: 36,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
-                letterSpacing: 3,
+                letterSpacing: 1.5,
               ),
             ),
             
@@ -264,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
             
             // Main Title
             Text(
-              'Login page',
+              'Welcome Back',
               style: TextStyle(
                 fontSize: 48,
                 fontWeight: FontWeight.w300,
@@ -277,7 +294,7 @@ class _LoginScreenState extends State<LoginScreen> {
             
             // Subtitle
             Text(
-              'Start your journey\nnow with us',
+              'Continue creating\namazing YouTube Shorts',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w300,
@@ -304,20 +321,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Icon(
                     _healthStatus == HealthStatus.healthy 
-                        ? Icons.check_circle 
+                        ? Icons.cloud_done_outlined 
                         : _healthStatus == HealthStatus.checking
-                            ? Icons.hourglass_empty
-                            : Icons.error,
+                            ? Icons.cloud_sync_outlined
+                            : Icons.cloud_off_outlined,
                     color: _getHealthStatusColor(),
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     _healthStatus == HealthStatus.healthy 
-                        ? 'Backend Ready'
+                        ? 'Studio Ready'
                         : _healthStatus == HealthStatus.checking
-                            ? 'Checking...'
-                            : 'Backend Offline',
+                            ? 'Connecting...'
+                            : 'Studio Offline',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -355,14 +372,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Icon(
-                    Icons.lock_outline,
+                    Icons.play_circle_outline,
                     color: Colors.white,
                     size: 30,
                   ),
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Welcome Back',
+                  'Welcome Back, Creator',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -371,7 +388,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Sign in to your account',
+                  'Sign in to continue creating YouTube Shorts',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
