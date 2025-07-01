@@ -113,7 +113,13 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
         customText: previewText,
       );
       
-      String audioUrl = _apiClient.currentApiUrl + previewResponse['download_url'];
+      // The download_url already includes /api/v1, so we need to use the base domain only
+      String downloadPath = previewResponse['download_url'] as String;
+      // Remove /api/v1 prefix if it exists since our base URL already includes it
+      if (downloadPath.startsWith('/api/v1')) {
+        downloadPath = downloadPath.substring(7); // Remove '/api/v1'
+      }
+      String audioUrl = _apiClient.currentApiUrl + downloadPath;
 
       if (kIsWeb) {
         // Create HTML5 audio element for web playback
