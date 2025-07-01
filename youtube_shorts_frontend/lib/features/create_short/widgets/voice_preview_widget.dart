@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/di/service_locator.dart';
+import '../../../core/config/environment.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
@@ -116,13 +117,9 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
       // Get download URL from backend response
       String downloadPath = previewResponse['download_url'] as String;
       
-      // Construct the full URL using base domain (without /api/v1 duplication)
-      // The download_url from backend already includes the full path with /api/v1
-      String baseUrl = _apiClient.currentApiUrl;
-      if (baseUrl.endsWith('/api/v1')) {
-        baseUrl = baseUrl.substring(0, baseUrl.length - 7); // Remove '/api/v1' from base
-      }
-      String audioUrl = baseUrl + downloadPath;
+      // Construct the full URL using raw domain from environment config
+      // This avoids the /api/v1 duplication issue entirely
+      String audioUrl = EnvironmentConfig.apiBaseUrl + downloadPath;
 
       if (kIsWeb) {
         // Create HTML5 audio element for web playback
