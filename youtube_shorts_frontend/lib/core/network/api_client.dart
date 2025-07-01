@@ -413,4 +413,75 @@ class ApiClient {
         return GenericException('HTTP Error $statusCode: $message');
     }
   }
+
+  // Voice Preview Methods
+  Future<Map<String, dynamic>> generateVoicePreview({
+    required String voice,
+    String? customText,
+  }) async {
+    try {
+      final endpoint = '/youtube/voices/preview';
+      final body = {
+        'voice': voice,
+        if (customText != null) 'text': customText,
+      };
+      
+      final response = await _requestWithFailover<Map<String, dynamic>>(() async {
+        return await _dio.post<Map<String, dynamic>>(
+          endpoint,
+          data: body,
+        );
+      });
+      
+      return response.data;
+    } catch (e) {
+      print('Error generating voice preview: $e');
+      rethrow;
+    }
+  }
+
+  Future<String> getVoicePreviewDownloadUrl({
+    required String voice,
+    String? customText,
+  }) async {
+    try {
+      final params = {
+        if (customText != null) 'text': customText,
+      };
+      
+      final queryString = params.isNotEmpty 
+          ? '?' + params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')
+          : '';
+      
+      return '$currentApiUrl/youtube/voices/preview/$voice/download$queryString';
+    } catch (e) {
+      print('Error getting voice preview URL: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> generateCustomVoicePreview({
+    required String voice,
+    required String customText,
+  }) async {
+    try {
+      final endpoint = '/youtube/voices/preview/custom';
+      final body = {
+        'voice': voice,
+        'custom_text': customText,
+      };
+      
+      final response = await _requestWithFailover<Map<String, dynamic>>(() async {
+        return await _dio.post<Map<String, dynamic>>(
+          endpoint,
+          data: body,
+        );
+      });
+      
+      return response.data;
+    } catch (e) {
+      print('Error generating custom voice preview: $e');
+      rethrow;
+    }
+  }
 } 

@@ -17,6 +17,7 @@ import '../../jobs/bloc/jobs_bloc.dart';
 import '../../jobs/bloc/jobs_event.dart';
 import '../../jobs/bloc/jobs_state.dart';
 import '../../videos/widgets/video_selection_widget.dart';
+import '../widgets/voice_preview_widget.dart';
 
 class CreateShortScreen extends StatefulWidget {
   final bool showAppBar;
@@ -1328,68 +1329,80 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
   }
 
   Widget _buildOptionsSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Options',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _selectedVoice,
-              decoration: const InputDecoration(
-                labelText: 'Voice for TTS',
-                border: OutlineInputBorder(),
-              ),
-              items: _availableVoices.map((voice) {
-                return DropdownMenuItem(
-                  value: voice,
-                  child: Text(voice.toUpperCase()),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedVoice = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              title: const Text('Mock Mode'),
-              subtitle: const Text('Process video for download only (don\'t upload to YouTube)'),
-              value: _mockMode,
-              onChanged: (value) {
-                setState(() {
-                  _mockMode = value;
-                  if (value) {
-                    _autoUploadToYoutube = false; // Disable auto-upload if mock mode is enabled
-                  }
-                });
-              },
-            ),
-            if (!_mockMode) ...[
-              const SizedBox(height: 8),
-              SwitchListTile(
-                title: const Text('Auto-upload to YouTube'),
-                subtitle: const Text('Automatically upload the processed video to YouTube'),
-                value: _autoUploadToYoutube,
-                onChanged: (value) {
-                  setState(() {
-                    _autoUploadToYoutube = value;
-                  });
-                },
-              ),
-            ],
-          ],
+    return Column(
+      children: [
+        // Voice Preview Widget
+        VoicePreviewWidget(
+          availableVoices: _availableVoices,
+          selectedVoice: _selectedVoice,
+          onVoiceSelected: (voice) {
+            setState(() {
+              _selectedVoice = voice;
+            });
+          },
+          transcriptText: _transcriptController.text.isNotEmpty 
+              ? _transcriptController.text 
+              : null,
         ),
-      ),
+        
+        const SizedBox(height: 16),
+        
+        // Additional Options
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.settings,
+                      color: Colors.blue,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Processing Options',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  title: const Text('Mock Mode'),
+                  subtitle: const Text('Process video for download only (don\'t upload to YouTube)'),
+                  value: _mockMode,
+                  onChanged: (value) {
+                    setState(() {
+                      _mockMode = value;
+                      if (value) {
+                        _autoUploadToYoutube = false; // Disable auto-upload if mock mode is enabled
+                      }
+                    });
+                  },
+                ),
+                if (!_mockMode) ...[
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    title: const Text('Auto-upload to YouTube'),
+                    subtitle: const Text('Automatically upload the processed video to YouTube'),
+                    value: _autoUploadToYoutube,
+                    onChanged: (value) {
+                      setState(() {
+                        _autoUploadToYoutube = value;
+                      });
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
