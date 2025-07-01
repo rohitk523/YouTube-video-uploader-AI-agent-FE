@@ -18,6 +18,7 @@ flutter pub get
 echo "🔨 Building for web (production)..."
 flutter build web --release \
   --dart-define=API_BASE_URL=$API_BASE_URL \
+  --dart-define=FLUTTER_ENV=production \
   --web-renderer html \
   --base-href="/"
 

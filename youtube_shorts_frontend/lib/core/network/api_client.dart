@@ -20,13 +20,18 @@ class ApiClient {
   }
   
   ApiClient._internal() {
+    print('🚀 Initializing API Client');
+    print('📍 Environment: ${EnvironmentConfig.currentEnvironment}');
+    print('🌐 Primary URL: ${EnvironmentConfig.apiBaseUrl}');
+    print('🔄 Fallback URL: ${EnvironmentConfig.fallbackApiBaseUrl}');
     _initializeDio();
   }
   
   void _initializeDio([String? baseUrl]) {
     _currentBaseUrl = baseUrl ?? ApiConstants.apiBaseUrl;
+    print('🔧 Initializing Dio with base URL: $_currentBaseUrl');
     _dio = Dio(BaseOptions(
-      baseUrl: '$_currentBaseUrl/api/v1',
+      baseUrl: _currentBaseUrl, // ApiConstants.apiBaseUrl already includes /api/v1
       connectTimeout: ApiConstants.defaultTimeout,
       receiveTimeout: ApiConstants.defaultTimeout,
       sendTimeout: ApiConstants.uploadTimeout,
@@ -47,7 +52,7 @@ class ApiClient {
         if (token != null && !options.path.contains('/oauth/token')) {
           options.headers['Authorization'] = 'Bearer $token';
         }
-        print('🌐 API Request: ${_currentBaseUrl}${options.path}');
+        print('🌐 API Request: ${_dio.options.baseUrl}${options.path}');
         handler.next(options);
       },
       onError: (error, handler) async {
@@ -105,8 +110,9 @@ class ApiClient {
       if (_shouldTryFailover(error)) {
         print('🔄 Primary API failed, trying fallback URL...');
         
-        // Switch to fallback URL (Render)
-        _initializeDio(EnvironmentConfig.fallbackApiBaseUrl);
+        // Switch to fallback URL (Render)  
+        final fallbackUrl = '${EnvironmentConfig.fallbackApiBaseUrl}/api/v1';
+        _initializeDio(fallbackUrl);
         _isUsingFallback = true;
         
         try {
