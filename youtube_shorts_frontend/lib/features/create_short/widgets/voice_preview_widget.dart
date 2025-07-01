@@ -5,6 +5,7 @@ import '../../../core/di/service_locator.dart';
 import '../../../core/config/environment.dart';
 import '../../../core/constants/api_constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart' as dio;
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
@@ -122,35 +123,27 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
         customText: previewText,
       );
       
-      // Get download URL from backend response
-      String downloadPath = previewResponse['download_url'] as String;
-      
-      // Construct the full URL using current active API URL (handles failover)
-      // This ensures we use the same backend the API client is currently using
-      String currentBaseUrl = _apiClient.currentApiUrl;
-      if (currentBaseUrl.endsWith('/api/v1')) {
-        currentBaseUrl = currentBaseUrl.substring(0, currentBaseUrl.length - 7);
-      }
-      String audioUrl = currentBaseUrl + downloadPath;
+      // We'll use the API client directly to download the audio
+      // This handles authentication, CORS, and failover automatically
 
       if (kIsWeb) {
-        // Fetch audio with authentication headers and create blob URL
+        // Use Dio to download audio with proper authentication and CORS handling
         try {
-          final token = await _getAccessToken();
+          // Download audio using the same API client (handles auth + CORS)
+          final response = await _apiClient.get<List<int>>(
+            '/youtube/voices/preview/$voice/download',
+            options: dio.Options(
+              responseType: dio.ResponseType.bytes,
+              headers: {'Accept': 'audio/*'},
+            ),
+          );
           
-          final response = await html.window.fetch(audioUrl, {
-            'method': 'GET',
-            'headers': {
-              'Authorization': 'Bearer $token',
-              'Accept': 'audio/*',
-            },
-          });
-          
-          if (response.ok) {
-            final blob = await response.blob();
+          if (response.data != null) {
+            // Create blob from bytes and generate blob URL
+            final blob = html.Blob([response.data], 'audio/mpeg');
             final blobUrl = html.Url.createObjectUrlFromBlob(blob);
             
-            // Create HTML5 audio element with authenticated blob URL
+            // Create HTML5 audio element with blob URL
             _currentAudioElement = html.AudioElement(blobUrl);
             _currentAudioElement!.preload = 'auto';
             
@@ -197,7 +190,7 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
             _currentAudioElement!.load();
             
           } else {
-            throw Exception('Failed to fetch audio: ${response.statusText}');
+            throw Exception('No audio data received');
           }
         } catch (e) {
           setState(() {
