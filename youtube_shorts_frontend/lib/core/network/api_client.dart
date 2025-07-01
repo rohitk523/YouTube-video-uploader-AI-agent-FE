@@ -5,11 +5,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
+import '../config/environment.dart';
 import '../errors/app_exceptions.dart';
 
 class ApiClient {
-  late final Dio _dio;
+  late Dio _dio;
   static ApiClient? _instance;
+  String _currentBaseUrl = '';
+  bool _isUsingFallback = false;
   
   factory ApiClient() {
     _instance ??= ApiClient._internal();
@@ -17,8 +20,13 @@ class ApiClient {
   }
   
   ApiClient._internal() {
+    _initializeDio();
+  }
+  
+  void _initializeDio([String? baseUrl]) {
+    _currentBaseUrl = baseUrl ?? ApiConstants.apiBaseUrl;
     _dio = Dio(BaseOptions(
-      baseUrl: ApiConstants.apiBaseUrl,
+      baseUrl: '$_currentBaseUrl/api/v1',
       connectTimeout: ApiConstants.defaultTimeout,
       receiveTimeout: ApiConstants.defaultTimeout,
       sendTimeout: ApiConstants.uploadTimeout,
@@ -39,6 +47,7 @@ class ApiClient {
         if (token != null && !options.path.contains('/oauth/token')) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+        print('🌐 API Request: ${_currentBaseUrl}${options.path}');
         handler.next(options);
       },
       onError: (error, handler) async {
@@ -68,11 +77,11 @@ class ApiClient {
     // Response interceptor for logging and error transformation
     _dio.interceptors.add(InterceptorsWrapper(
       onResponse: (response, handler) {
-        print('Response [${response.statusCode}]: ${response.requestOptions.path}');
+        print('✅ Response [${response.statusCode}]: ${response.requestOptions.path}');
         handler.next(response);
       },
       onError: (error, handler) {
-        print('Error [${error.response?.statusCode}]: ${error.requestOptions.path}');
+        print('❌ Error [${error.response?.statusCode}]: ${error.requestOptions.path}');
         final appException = _handleDioError(error);
         handler.reject(DioException(
           requestOptions: error.requestOptions,
@@ -84,81 +93,129 @@ class ApiClient {
     ));
   }
   
-  // GET request
+  // Enhanced request method with automatic failover
+  Future<Response<T>> _requestWithFailover<T>(
+    Future<Response<T>> Function() requestFunction,
+  ) async {
+    try {
+      // Try with current base URL (Railway)
+      return await requestFunction();
+    } catch (error) {
+      // If it's a network error and we're in production and not already using fallback
+      if (_shouldTryFailover(error)) {
+        print('🔄 Primary API failed, trying fallback URL...');
+        
+        // Switch to fallback URL (Render)
+        _initializeDio(EnvironmentConfig.fallbackApiBaseUrl);
+        _isUsingFallback = true;
+        
+        try {
+          final result = await requestFunction();
+          print('✅ Fallback API successful');
+          return result;
+        } catch (fallbackError) {
+          print('❌ Fallback API also failed');
+          // Reset to original URL for next attempt
+          _initializeDio();
+          _isUsingFallback = false;
+          throw _handleError(fallbackError);
+        }
+      }
+      throw _handleError(error);
+    }
+  }
+  
+  bool _shouldTryFailover(dynamic error) {
+    // Only try failover in production and if not already using fallback
+    if (!EnvironmentConfig.isProduction || _isUsingFallback) {
+      return false;
+    }
+    
+    // Try failover for network errors or server errors (5xx)
+    if (error is DioException) {
+      switch (error.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.connectionError:
+          return true;
+        case DioExceptionType.badResponse:
+          final statusCode = error.response?.statusCode;
+          return statusCode != null && statusCode >= 500;
+        default:
+          return false;
+      }
+    }
+    return false;
+  }
+
+  // GET request with failover
   Future<Response<T>> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    try {
+    return await _requestWithFailover<T>(() async {
       return await _dio.get<T>(
         path,
         queryParameters: queryParameters,
         options: options,
       );
-    } catch (e) {
-      throw _handleError(e);
-    }
+    });
   }
   
-  // POST request
+  // POST request with failover
   Future<Response<T>> post<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    try {
+    return await _requestWithFailover<T>(() async {
       return await _dio.post<T>(
         path,
         data: data,
         queryParameters: queryParameters,
         options: options,
       );
-    } catch (e) {
-      throw _handleError(e);
-    }
+    });
   }
   
-  // PUT request
+  // PUT request with failover
   Future<Response<T>> put<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    try {
+    return await _requestWithFailover<T>(() async {
       return await _dio.put<T>(
         path,
         data: data,
         queryParameters: queryParameters,
         options: options,
       );
-    } catch (e) {
-      throw _handleError(e);
-    }
+    });
   }
   
-  // DELETE request
+  // DELETE request with failover
   Future<Response<T>> delete<T>(
     String path, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    try {
+    return await _requestWithFailover<T>(() async {
       return await _dio.delete<T>(
         path,
         data: data,
         queryParameters: queryParameters,
         options: options,
       );
-    } catch (e) {
-      throw _handleError(e);
-    }
+    });
   }
   
-  // Upload file
+  // Upload file with failover
   Future<Response<T>> uploadFile<T>(
     String path,
     File? file, {
@@ -167,7 +224,7 @@ class ApiClient {
     Map<String, dynamic>? additionalFields,
     void Function(int, int)? onSendProgress,
   }) async {
-    try {
+    return await _requestWithFailover<T>(() async {
       MultipartFile multipartFile;
       
       if (kIsWeb && platformFile != null) {
@@ -199,9 +256,7 @@ class ApiClient {
           },
         ),
       );
-    } catch (e) {
-      throw _handleError(e);
-    }
+    });
   }
   
   // Download file
@@ -223,13 +278,13 @@ class ApiClient {
     }
   }
   
-  // Form data POST (for OAuth token endpoint)
+  // Form data POST (for OAuth token endpoint) with failover
   Future<Response<T>> postForm<T>(
     String path,
     Map<String, dynamic> data, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    try {
+    return await _requestWithFailover<T>(() async {
       return await _dio.post<T>(
         path,
         data: data,
@@ -238,8 +293,19 @@ class ApiClient {
           contentType: 'application/x-www-form-urlencoded',
         ),
       );
-    } catch (e) {
-      throw _handleError(e);
+    });
+  }
+  
+  // Get current API status
+  String get currentApiUrl => _currentBaseUrl;
+  bool get isUsingFallback => _isUsingFallback;
+  
+  // Method to manually reset to primary URL
+  void resetToPrimary() {
+    if (_isUsingFallback) {
+      _initializeDio();
+      _isUsingFallback = false;
+      print('🔄 Reset to primary API URL');
     }
   }
   

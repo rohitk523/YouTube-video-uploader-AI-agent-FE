@@ -35,10 +35,23 @@ class EnvironmentConfig {
     // Otherwise, use environment-based defaults
     switch (currentEnvironment) {
       case Environment.production:
-        return 'https://your-backend-domain.com'; // Replace with your actual backend URL
+        return 'https://youtube-shorts-api-production.up.railway.app'; // Railway production deployment
       case Environment.development:
         return 'http://localhost:8000';
     }
+  }
+  
+  // Fallback URLs for production
+  static const List<String> productionFallbackUrls = [
+    'https://youtube-shorts-api-production.up.railway.app', // Primary: Railway
+    'https://youtube-video-uploader-ai-agent-be.onrender.com', // Fallback: Render
+  ];
+  
+  static String get fallbackApiBaseUrl {
+    if (isProduction) {
+      return 'https://youtube-video-uploader-ai-agent-be.onrender.com'; // Render fallback
+    }
+    return apiBaseUrl;
   }
   
   static bool get isProduction => currentEnvironment == Environment.production;

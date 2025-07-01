@@ -1,6 +1,7 @@
 class ApiConstants {
-  // Base URLs
-  static const String baseUrl = 'https://your-backend-url.com/api/v1';
+  // Base URLs - Updated for Railway (primary) and Render (fallback)
+  static const String baseUrl = 'https://youtube-shorts-api-production.up.railway.app/api/v1';
+  static const String fallbackUrl = 'https://youtube-video-uploader-ai-agent-be.onrender.com/api/v1';
   static const String localBaseUrl = 'http://localhost:8000/api/v1';
   
   // Endpoints

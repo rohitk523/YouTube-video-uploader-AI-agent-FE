@@ -3,8 +3,8 @@
 # Production build script for Flutter Web
 echo "🚀 Building Flutter Web for Production..."
 
-# Set production API URL
-export API_BASE_URL="https://youtube-video-uploader-ai-agent-be.onrender.com"
+# Set production API URL (Railway as primary)
+export API_BASE_URL="https://youtube-shorts-api-production.up.railway.app"
 
 # Clean previous builds
 echo "🧹 Cleaning previous builds..."
