@@ -29,6 +29,9 @@ class _LoginScreenState extends State<LoginScreen> {
   // Register form controllers
   final _registerEmailController = TextEditingController();
   final _registerPasswordController = TextEditingController();
+  final _registerUsernameController = TextEditingController();
+  final _registerFirstNameController = TextEditingController();
+  final _registerLastNameController = TextEditingController();
   bool _isRegisterPasswordVisible = false;
   bool _isRegisterLoading = false;
   
@@ -52,6 +55,9 @@ class _LoginScreenState extends State<LoginScreen> {
     _loginPasswordController.dispose();
     _registerEmailController.dispose();
     _registerPasswordController.dispose();
+    _registerUsernameController.dispose();
+    _registerFirstNameController.dispose();
+    _registerLastNameController.dispose();
     super.dispose();
   }
 
@@ -123,6 +129,9 @@ class _LoginScreenState extends State<LoginScreen> {
       final request = UserRegisterRequest(
         email: _registerEmailController.text.trim(),
         password: _registerPasswordController.text,
+        username: _registerUsernameController.text.trim(),
+        firstName: _registerFirstNameController.text.trim(),
+        lastName: _registerLastNameController.text.trim(),
       );
       
       context.read<AuthBloc>().add(AuthRegisterRequested(request));
@@ -379,6 +388,110 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             
             const SizedBox(height: 24),
+            
+            // First Name and Last Name Row
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _registerFirstNameController,
+                    decoration: InputDecoration(
+                      hintText: 'First name',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.blue),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Required';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    controller: _registerLastNameController,
+                    decoration: InputDecoration(
+                      hintText: 'Last name',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.blue),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Required';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Username field
+            TextFormField(
+              controller: _registerUsernameController,
+              decoration: InputDecoration(
+                hintText: 'Choose a username',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a username';
+                }
+                if (value.length < 3) {
+                  return 'Username must be at least 3 characters';
+                }
+                if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                  return 'Username can only contain letters, numbers, and underscores';
+                }
+                return null;
+              },
+            ),
+            
+            const SizedBox(height: 16),
             
             // Email field
             TextFormField(
