@@ -162,16 +162,51 @@ class _LoginScreenState extends State<LoginScreen> {
             Expanded(
               flex: 1,
               child: Container(
-                color: Colors.white,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.grey[50]!,
+                      Colors.white,
+                      Colors.grey[50]!,
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
         ),
-        // Centered Login Form
+        // Semi-transparent overlay
+        Container(
+          color: Colors.black.withOpacity(0.1),
+        ),
+        // Centered Login Form with better styling
         Center(
           child: Container(
-            width: 400,
-            child: _buildLoginForm(),
+            width: 450,
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            child: Card(
+              elevation: 20,
+              shadowColor: Colors.black.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white,
+                      Colors.grey[50]!,
+                    ],
+                  ),
+                ),
+                child: _buildLoginForm(),
+              ),
+            ),
           ),
         ),
       ],
@@ -298,39 +333,54 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-
-
   Widget _buildLoginForm() {
     return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 0,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.all(40),
       child: Form(
         key: _loginFormKey,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Login to your account',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
-              ),
+            // Header with icon
+            Column(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF3b82f6), Color(0xFF1e3c72)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Icon(
+                    Icons.lock_outline,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Welcome Back',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sign in to your account',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 40),
             
             // Email field
             TextFormField(
@@ -341,18 +391,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 filled: true,
                 fillColor: Colors.grey[50],
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(color: Colors.grey[300]!),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(color: Colors.grey[300]!),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.blue),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Color(0xFF3b82f6), width: 2),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                prefixIcon: Icon(Icons.email_outlined, color: Colors.grey[600]),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -365,7 +416,7 @@ class _LoginScreenState extends State<LoginScreen> {
               },
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             
             // Password field
             TextFormField(
@@ -375,6 +426,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 hintText: 'Enter your password',
                 filled: true,
                 fillColor: Colors.grey[50],
+                prefixIcon: Icon(Icons.lock_outline, color: Colors.grey[600]),
                 suffixIcon: IconButton(
                   icon: Icon(
                     _isLoginPasswordVisible ? Icons.visibility_off : Icons.visibility,
@@ -387,18 +439,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(color: Colors.grey[300]!),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide(color: Colors.grey[300]!),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.blue),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Color(0xFF3b82f6), width: 2),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -421,50 +473,52 @@ class _LoginScreenState extends State<LoginScreen> {
                   // TODO: Implement forgot password
                 },
                 child: Text(
-                  'Forgot ?',
+                  'Forgot Password?',
                   style: TextStyle(
-                    color: Colors.blue,
-                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF3b82f6),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
               ),
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 30),
             
             // Login Button
-            SizedBox(
-              height: 50,
+            Container(
+              height: 54,
               child: ElevatedButton(
                 onPressed: (_isLoginLoading || _healthStatus != HealthStatus.healthy) ? null : _login,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: Color(0xFF3b82f6),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  elevation: 0,
+                  elevation: 2,
+                  shadowColor: Color(0xFF3b82f6).withOpacity(0.4),
                 ),
                 child: _isLoginLoading
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 24,
+                        height: 24,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                          strokeWidth: 2.5,
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
                     : Text(
-                        'Login now',
+                        'Sign In',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
               ),
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             
             // Sign up link
             Row(
@@ -472,7 +526,10 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Text(
                   "Don't have an account? ",
-                  style: TextStyle(color: Colors.grey[600]),
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 15,
+                  ),
                 ),
                 GestureDetector(
                   onTap: () {
@@ -481,10 +538,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     );
                   },
                   child: Text(
-                    'Sign up',
+                    'Create Account',
                     style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF3b82f6),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
                     ),
                   ),
                 ),
