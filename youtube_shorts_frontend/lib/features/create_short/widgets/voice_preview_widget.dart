@@ -37,6 +37,13 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
   
   // HTML5 audio element for web playback
   html.AudioElement? _currentAudioElement;
+  
+  // Client-side caching for audio blobs
+  static final Map<String, String> _audioBlobCache = {};
+  static final Map<String, DateTime> _cacheTimestamps = {};
+  
+  // Cache duration (15 minutes to match backend expiry)
+  static const Duration _cacheDuration = Duration(minutes: 15);
 
   // Voice information with descriptions and styles
   final Map<String, Map<String, dynamic>> _voiceInfo = {
@@ -95,9 +102,99 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
     return prefs.getString(ApiConstants.accessTokenKey);
   }
 
+  // Cache management methods
+  String? _getCachedAudioBlob(String cacheKey) {
+    _cleanupExpiredCache();
+    
+    if (_audioBlobCache.containsKey(cacheKey)) {
+      final timestamp = _cacheTimestamps[cacheKey];
+      if (timestamp != null && DateTime.now().difference(timestamp) < _cacheDuration) {
+        return _audioBlobCache[cacheKey];
+      } else {
+        // Remove expired entry
+        final blobUrl = _audioBlobCache.remove(cacheKey);
+        if (blobUrl != null) {
+          html.Url.revokeObjectUrl(blobUrl);
+        }
+        _cacheTimestamps.remove(cacheKey);
+      }
+    }
+    return null;
+  }
+
+  void _cacheAudioBlob(String cacheKey, String blobUrl) {
+    _audioBlobCache[cacheKey] = blobUrl;
+    _cacheTimestamps[cacheKey] = DateTime.now();
+  }
+
+  void _cleanupExpiredCache() {
+    final now = DateTime.now();
+    final expiredKeys = <String>[];
+    
+    _cacheTimestamps.forEach((key, timestamp) {
+      if (now.difference(timestamp) >= _cacheDuration) {
+        expiredKeys.add(key);
+      }
+    });
+    
+    for (final key in expiredKeys) {
+      final blobUrl = _audioBlobCache.remove(key);
+      if (blobUrl != null) {
+        html.Url.revokeObjectUrl(blobUrl);
+      }
+      _cacheTimestamps.remove(key);
+    }
+  }
+
+  void _playAudioFromBlob(String voice, String blobUrl) {
+    // Create HTML5 audio element with blob URL
+    _currentAudioElement = html.AudioElement(blobUrl);
+    _currentAudioElement!.preload = 'auto';
+    
+    // Setup event listeners
+    _currentAudioElement!.onLoadedData.listen((_) {
+      if (mounted) {
+        setState(() {
+          _voiceLoadingStates[voice] = false;
+          _currentlyPlaying = voice;
+        });
+        // Start playback
+        _currentAudioElement!.play();
+      }
+    });
+
+    _currentAudioElement!.onEnded.listen((_) {
+      if (mounted) {
+        setState(() {
+          _currentlyPlaying = null;
+        });
+      }
+    });
+
+    _currentAudioElement!.onError.listen((error) {
+      if (mounted) {
+        setState(() {
+          _voiceLoadingStates[voice] = false;
+          _currentlyPlaying = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to play ${voice.toUpperCase()} preview'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
+
+    // Load the audio
+    _currentAudioElement!.load();
+  }
+
   @override
   void dispose() {
     _stopVoicePreview();
+    // Clean up cache when widget is disposed
+    _cleanupExpiredCache();
     super.dispose();
   }
 
@@ -108,28 +205,38 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
         _stopVoicePreview();
       }
 
+      // Prevent multiple simultaneous calls for the same voice
+      if (_voiceLoadingStates[voice] == true) {
+        return;
+      }
+
       setState(() {
         _voiceLoadingStates[voice] = true;
       });
 
-      // Use custom text if available, otherwise use default
+      // Generate cache key based on voice and transcript
       String? previewText = widget.transcriptText?.isNotEmpty == true 
           ? widget.transcriptText!.substring(0, widget.transcriptText!.length > 100 ? 100 : widget.transcriptText!.length)
           : null;
+      
+      String cacheKey = '$voice${previewText != null ? '_${previewText.hashCode}' : ''}';
+      
+      // Check if we have a valid cached audio blob
+      String? cachedBlobUrl = _getCachedAudioBlob(cacheKey);
+      if (cachedBlobUrl != null) {
+        _playAudioFromBlob(voice, cachedBlobUrl);
+        return;
+      }
 
-      // Generate voice preview and get audio URL from backend response
+      // Generate voice preview and download audio
       final previewResponse = await _apiClient.generateVoicePreview(
         voice: voice,
         customText: previewText,
       );
-      
-      // We'll use the API client directly to download the audio
-      // This handles authentication, CORS, and failover automatically
 
       if (kIsWeb) {
-        // Use Dio to download audio with proper authentication and CORS handling
+        // Download audio using the same API client (handles auth + CORS)
         try {
-          // Download audio using the same API client (handles auth + CORS)
           final response = await _apiClient.get<List<int>>(
             '/youtube/voices/preview/$voice/download',
             options: dio.Options(
@@ -143,51 +250,11 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
             final blob = html.Blob([response.data], 'audio/mpeg');
             final blobUrl = html.Url.createObjectUrlFromBlob(blob);
             
-            // Create HTML5 audio element with blob URL
-            _currentAudioElement = html.AudioElement(blobUrl);
-            _currentAudioElement!.preload = 'auto';
+            // Cache the blob URL
+            _cacheAudioBlob(cacheKey, blobUrl);
             
-            // Setup event listeners
-            _currentAudioElement!.onLoadedData.listen((_) {
-              if (mounted) {
-                setState(() {
-                  _voiceLoadingStates[voice] = false;
-                  _currentlyPlaying = voice;
-                });
-                // Start playback
-                _currentAudioElement!.play();
-              }
-            });
-
-            _currentAudioElement!.onEnded.listen((_) {
-              if (mounted) {
-                setState(() {
-                  _currentlyPlaying = null;
-                });
-                // Clean up blob URL
-                html.Url.revokeObjectUrl(blobUrl);
-              }
-            });
-
-            _currentAudioElement!.onError.listen((error) {
-              if (mounted) {
-                setState(() {
-                  _voiceLoadingStates[voice] = false;
-                  _currentlyPlaying = null;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to play ${voice.toUpperCase()} preview'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                // Clean up blob URL
-                html.Url.revokeObjectUrl(blobUrl);
-              }
-            });
-
-            // Load the audio
-            _currentAudioElement!.load();
+            // Play the audio
+            _playAudioFromBlob(voice, blobUrl);
             
           } else {
             throw Exception('No audio data received');
