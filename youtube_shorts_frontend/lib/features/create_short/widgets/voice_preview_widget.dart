@@ -125,20 +125,30 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
       // Get download URL from backend response
       String downloadPath = previewResponse['download_url'] as String;
       
-      // Construct the full URL using raw domain from environment config
-      // This avoids the /api/v1 duplication issue entirely
-      String audioUrl = EnvironmentConfig.apiBaseUrl + downloadPath;
+      // Construct the full URL using current active API URL (handles failover)
+      // This ensures we use the same backend the API client is currently using
+      String currentBaseUrl = _apiClient.currentApiUrl;
+      if (currentBaseUrl.endsWith('/api/v1')) {
+        currentBaseUrl = currentBaseUrl.substring(0, currentBaseUrl.length - 7);
+      }
+      String audioUrl = currentBaseUrl + downloadPath;
 
       if (kIsWeb) {
         // Fetch audio with authentication headers and create blob URL
         try {
+          print('🎵 Fetching audio from: $audioUrl');
+          final token = await _getAccessToken();
+          print('🔐 Using token: ${token?.substring(0, 20)}...');
+          
           final response = await html.window.fetch(audioUrl, {
             'method': 'GET',
             'headers': {
-              'Authorization': 'Bearer ${await _getAccessToken()}',
+              'Authorization': 'Bearer $token',
               'Accept': 'audio/*',
             },
           });
+          
+          print('📡 Response status: ${response.status}');
           
           if (response.status == 200) {
             final blob = await response.blob();
@@ -194,6 +204,7 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
             throw Exception('Failed to fetch audio: ${response.status}');
           }
         } catch (e) {
+          print('❌ Error in voice preview: $e');
           setState(() {
             _voiceLoadingStates[voice] = false;
             _currentlyPlaying = null;
@@ -202,8 +213,9 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Failed to load ${voice.toUpperCase()} preview'),
+                content: Text('Failed to load ${voice.toUpperCase()} preview: ${e.toString()}'),
                 backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
               ),
             );
           }
@@ -226,6 +238,7 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
       }
 
     } catch (e) {
+      print('❌ Error generating voice preview: $e');
       setState(() {
         _voiceLoadingStates[voice] = false;
         _currentlyPlaying = null;
@@ -234,8 +247,9 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to load voice preview. Please try again.'),
+            content: Text('Failed to generate voice preview: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
