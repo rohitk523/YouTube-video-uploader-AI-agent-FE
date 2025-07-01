@@ -228,15 +228,10 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
         return;
       }
 
-      // Generate voice preview and download audio
-      final previewResponse = await _apiClient.generateVoicePreview(
-        voice: voice,
-        customText: previewText,
-      );
-
       if (kIsWeb) {
-        // Download audio using the same API client (handles auth + CORS)
+        // First try to download from backend cache (skip generation if already cached)
         try {
+          // Try downloading directly first - this will work if backend has it cached
           final response = await _apiClient.get<List<int>>(
             '/youtube/voices/preview/$voice/download',
             options: dio.Options(
@@ -246,32 +241,63 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
           );
           
           if (response.data != null) {
-            // Create blob from bytes and generate blob URL
+            // Successfully downloaded from backend cache
             final blob = html.Blob([response.data], 'audio/mpeg');
             final blobUrl = html.Url.createObjectUrlFromBlob(blob);
             
-            // Cache the blob URL
+            // Cache the blob URL locally
             _cacheAudioBlob(cacheKey, blobUrl);
             
             // Play the audio
             _playAudioFromBlob(voice, blobUrl);
-            
-          } else {
-            throw Exception('No audio data received');
+            return;
           }
-        } catch (e) {
-          setState(() {
-            _voiceLoadingStates[voice] = false;
-            _currentlyPlaying = null;
-          });
-          
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to load ${voice.toUpperCase()} preview'),
-                backgroundColor: Colors.red,
+        } catch (downloadError) {
+          // Backend cache miss - need to generate preview first
+          try {
+            // Generate voice preview with custom text if available
+            await _apiClient.generateVoicePreview(
+              voice: voice,
+              customText: previewText,
+            );
+
+            // Now download the generated audio
+            final response = await _apiClient.get<List<int>>(
+              '/youtube/voices/preview/$voice/download',
+              options: dio.Options(
+                responseType: dio.ResponseType.bytes,
+                headers: {'Accept': 'audio/*'},
               ),
             );
+            
+            if (response.data != null) {
+              // Create blob from bytes and generate blob URL
+              final blob = html.Blob([response.data], 'audio/mpeg');
+              final blobUrl = html.Url.createObjectUrlFromBlob(blob);
+              
+              // Cache the blob URL
+              _cacheAudioBlob(cacheKey, blobUrl);
+              
+              // Play the audio
+              _playAudioFromBlob(voice, blobUrl);
+              
+            } else {
+              throw Exception('No audio data received after generation');
+            }
+          } catch (generateError) {
+            setState(() {
+              _voiceLoadingStates[voice] = false;
+              _currentlyPlaying = null;
+            });
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to generate ${voice.toUpperCase()} preview'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           }
         }
         
@@ -300,7 +326,7 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to generate voice preview'),
+            content: Text('Failed to load voice preview'),
             backgroundColor: Colors.red,
           ),
         );
