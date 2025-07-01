@@ -107,11 +107,13 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
           ? widget.transcriptText!.substring(0, widget.transcriptText!.length > 100 ? 100 : widget.transcriptText!.length)
           : null;
 
-      // Get audio URL from backend
-      String audioUrl = await _apiClient.getVoicePreviewDownloadUrl(
+      // Generate voice preview and get audio URL from backend response
+      final previewResponse = await _apiClient.generateVoicePreview(
         voice: voice,
         customText: previewText,
       );
+      
+      String audioUrl = _apiClient.currentApiUrl + previewResponse['download_url'];
 
       if (kIsWeb) {
         // Create HTML5 audio element for web playback

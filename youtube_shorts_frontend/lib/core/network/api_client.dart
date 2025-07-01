@@ -421,7 +421,7 @@ class ApiClient {
   }) async {
     try {
       final endpoint = '/youtube/voices/preview';
-      final body = {
+      final queryParams = {
         'voice': voice,
         if (customText != null) 'text': customText,
       };
@@ -429,7 +429,7 @@ class ApiClient {
       final response = await _requestWithFailover<Map<String, dynamic>>(() async {
         return await _dio.post<Map<String, dynamic>>(
           endpoint,
-          data: body,
+          queryParameters: queryParams,
         );
       });
       
@@ -470,7 +470,7 @@ class ApiClient {
   }) async {
     try {
       final endpoint = '/youtube/voices/preview/custom';
-      final body = {
+      final queryParams = {
         'voice': voice,
         'custom_text': customText,
       };
@@ -478,7 +478,7 @@ class ApiClient {
       final response = await _requestWithFailover<Map<String, dynamic>>(() async {
         return await _dio.post<Map<String, dynamic>>(
           endpoint,
-          data: body,
+          queryParameters: queryParams,
         );
       });
       
