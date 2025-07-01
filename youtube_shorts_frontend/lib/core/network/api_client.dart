@@ -492,4 +492,85 @@ class ApiClient {
       rethrow;
     }
   }
+
+  // AI Transcript Generation Methods
+  Future<Map<String, dynamic>> generateAITranscript({
+    required String context,
+    String? customInstructions,
+  }) async {
+    try {
+      final endpoint = '/upload/ai-transcript/generate';
+      final requestData = {
+        'context': context,
+        if (customInstructions != null && customInstructions.isNotEmpty)
+          'custom_instructions': customInstructions,
+      };
+      
+      print('🤖 Generating AI transcript with context: ${context.substring(0, context.length > 50 ? 50 : context.length)}...');
+      
+      final response = await _requestWithFailover<Map<String, dynamic>>(() async {
+        return await _dio.post<Map<String, dynamic>>(
+          endpoint,
+          data: requestData,
+        );
+      });
+      
+      if (response.data == null) {
+        throw Exception('AI transcript response data is null');
+      }
+      
+      print('✅ AI transcript generated successfully');
+      return response.data!;
+    } catch (e) {
+      print('❌ Error generating AI transcript: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> validateAITranscriptContext({
+    required String context,
+  }) async {
+    try {
+      final endpoint = '/upload/ai-transcript/validate';
+      final requestData = {
+        'context': context,
+        'custom_instructions': '', // Empty for validation
+      };
+      
+      final response = await _requestWithFailover<Map<String, dynamic>>(() async {
+        return await _dio.post<Map<String, dynamic>>(
+          endpoint,
+          data: requestData,
+        );
+      });
+      
+      if (response.data == null) {
+        throw Exception('AI transcript validation response data is null');
+      }
+      
+      return response.data!;
+    } catch (e) {
+      print('Error validating AI transcript context: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getAITranscriptServiceInfo() async {
+    try {
+      final endpoint = '/upload/ai-transcript/service-info';
+      
+      final response = await _requestWithFailover<Map<String, dynamic>>(() async {
+        return await _dio.get<Map<String, dynamic>>(endpoint);
+      });
+      
+      if (response.data == null) {
+        throw Exception('AI transcript service info response data is null');
+      }
+      
+      return response.data!;
+    } catch (e) {
+      print('Error getting AI transcript service info: $e');
+      rethrow;
+    }
+  }
 } 

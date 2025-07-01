@@ -9,6 +9,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../shared/models/upload_models.dart';
 import '../../../shared/models/job_models.dart';
 import '../../../shared/models/video_models.dart';
+import '../../../core/network/api_client.dart';
 import '../../../shared/widgets/video_preview_widget.dart';
 import '../../upload/bloc/upload_bloc.dart';
 import '../../upload/bloc/upload_event.dart';
@@ -33,6 +34,7 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _transcriptController = TextEditingController();
+  final _aiContextController = TextEditingController();
   
   File? _selectedVideoFile;
   File? _selectedTranscriptFile;
@@ -47,6 +49,11 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
   bool _autoUploadToYoutube = false;
   bool _mockMode = false;
   String? _selectedVoice = 'alloy';
+  
+  // AI Transcript Generation state
+  bool _isGeneratingAI = false;
+  bool _showAISection = false;
+  String? _aiErrorMessage;
   
   final List<String> _availableVoices = [
     'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'
@@ -68,6 +75,7 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
     _titleController.dispose();
     _descriptionController.dispose();
     _transcriptController.dispose();
+    _aiContextController.dispose();
     super.dispose();
   }
 
@@ -1122,6 +1130,11 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
                 },
               ),
               const SizedBox(height: 16),
+              
+              // AI Transcript Generation Section
+              _buildAITranscriptSection(),
+              
+              const SizedBox(height: 16),
               // For text input, show immediate green light when text is entered
               _transcriptController.text.trim().isNotEmpty
                   ? Container(
@@ -1782,6 +1795,7 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
     _titleController.clear();
     _descriptionController.clear();
     _transcriptController.clear();
+    _aiContextController.clear();
     
     setState(() {
       _selectedVideoFile = null;
@@ -1796,9 +1810,323 @@ class _CreateShortScreenState extends State<CreateShortScreen> {
       _autoUploadToYoutube = false;
       _mockMode = false;
       _selectedVoice = 'alloy';
+      _isGeneratingAI = false;
+      _showAISection = false;
+      _aiErrorMessage = null;
     });
     
     context.read<UploadBloc>().add(ResetUploadEvent());
+  }
+
+  // AI Transcript Generation Methods
+  Widget _buildAITranscriptSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.blue.shade600, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'AI Transcript Generator',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade700,
+                  fontSize: 16,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _showAISection = !_showAISection;
+                    if (!_showAISection) {
+                      _aiContextController.clear();
+                      _aiErrorMessage = null;
+                    }
+                  });
+                },
+                child: Text(_showAISection ? 'Hide' : 'Use AI'),
+              ),
+            ],
+          ),
+          if (_showAISection) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Describe your video topic or provide context for AI to generate a script:',
+              style: TextStyle(
+                color: Colors.blue.shade700,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _aiContextController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'e.g., "A quick tutorial on how to make coffee", "Fun facts about space", etc.',
+                border: const OutlineInputBorder(),
+                fillColor: Colors.white,
+                filled: true,
+                prefixIcon: Icon(Icons.lightbulb_outline, color: Colors.blue.shade600),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _aiErrorMessage = null;
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            
+            if (_aiErrorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _aiErrorMessage!,
+                        style: TextStyle(color: Colors.red.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isGeneratingAI || _aiContextController.text.trim().isEmpty
+                        ? null
+                        : _generateAITranscript,
+                    icon: _isGeneratingAI
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Icon(Icons.auto_awesome),
+                    label: Text(_isGeneratingAI ? 'Generating...' : 'Generate Script'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: () => _showAIHelpDialog(),
+                  icon: Icon(Icons.help_outline, color: Colors.blue.shade600),
+                  tooltip: 'AI Tips',
+                ),
+              ],
+            ),
+            
+            if (_isGeneratingAI) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.blue.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'AI is crafting your script... This may take a few seconds.',
+                      style: TextStyle(color: Colors.blue.shade700),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generateAITranscript() async {
+    if (_aiContextController.text.trim().isEmpty) {
+      setState(() {
+        _aiErrorMessage = 'Please provide context for AI generation';
+      });
+      return;
+    }
+
+    setState(() {
+      _isGeneratingAI = true;
+      _aiErrorMessage = null;
+    });
+
+    try {
+      final apiClient = ApiClient();
+      final response = await apiClient.generateAITranscript(
+        context: _aiContextController.text.trim(),
+      );
+
+      final aiResponse = AITranscriptResponse.fromJson(response);
+
+      if (aiResponse.isSuccess) {
+        setState(() {
+          _transcriptController.text = aiResponse.transcript;
+          _isGeneratingAI = false;
+          _showAISection = false; // Collapse AI section after successful generation
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('AI script generated successfully!'),
+                      Text(
+                        'Words: ${aiResponse.wordCount} • Duration: ~${aiResponse.estimatedDurationSeconds.toInt()}s',
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        setState(() {
+          _aiErrorMessage = aiResponse.errorMessage ?? 'Failed to generate AI transcript';
+          _isGeneratingAI = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _aiErrorMessage = 'Error: ${e.toString()}';
+        _isGeneratingAI = false;
+      });
+    }
+  }
+
+  void _showAIHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.tips_and_updates, color: Colors.blue.shade600),
+            const SizedBox(width: 8),
+            const Text('AI Script Generation Tips'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Get the best results by providing clear context:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            _buildTipItem('Be specific about your topic'),
+            _buildTipItem('Mention the video style (tutorial, facts, entertainment)'),
+            _buildTipItem('Include target audience if relevant'),
+            _buildTipItem('Specify the main message or call-to-action'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Example:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '"A quick 30-second tutorial showing beginners how to make perfect coffee at home. Include a hook about saving money and end with asking viewers to subscribe."',
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: Colors.blue.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it!'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTipItem(String tip) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade600,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(tip)),
+        ],
+      ),
+    );
   }
 
   Future<void> _downloadProcessedVideo(String jobId) async {

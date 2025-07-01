@@ -62,6 +62,98 @@ class TranscriptUploadRequest extends Equatable {
   List<Object> get props => [content, isTemp];
 }
 
+// AI Transcript Generation models
+class AITranscriptRequest extends Equatable {
+  final String context;
+  final String? customInstructions;
+
+  const AITranscriptRequest({
+    required this.context,
+    this.customInstructions,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'context': context,
+    if (customInstructions != null && customInstructions!.isNotEmpty)
+      'custom_instructions': customInstructions!,
+  };
+
+  @override
+  List<Object?> get props => [context, customInstructions];
+}
+
+class AITranscriptResponse extends Equatable {
+  final String status;
+  final String transcript;
+  final int wordCount;
+  final double estimatedDurationSeconds;
+  final String modelUsed;
+  final Map<String, dynamic> tokensUsed;
+  final String contextProvided;
+  final String? errorMessage;
+  final String? errorType;
+
+  const AITranscriptResponse({
+    required this.status,
+    this.transcript = '',
+    this.wordCount = 0,
+    this.estimatedDurationSeconds = 0.0,
+    this.modelUsed = '',
+    this.tokensUsed = const {},
+    this.contextProvided = '',
+    this.errorMessage,
+    this.errorType,
+  });
+
+  factory AITranscriptResponse.fromJson(Map<String, dynamic> json) => AITranscriptResponse(
+    status: json['status'] as String,
+    transcript: json['transcript'] as String? ?? '',
+    wordCount: json['word_count'] as int? ?? 0,
+    estimatedDurationSeconds: (json['estimated_duration_seconds'] as num?)?.toDouble() ?? 0.0,
+    modelUsed: json['model_used'] as String? ?? '',
+    tokensUsed: json['tokens_used'] as Map<String, dynamic>? ?? {},
+    contextProvided: json['context_provided'] as String? ?? '',
+    errorMessage: json['error_message'] as String?,
+    errorType: json['error_type'] as String?,
+  );
+
+  bool get isSuccess => status == 'success';
+  bool get isError => status == 'error';
+
+  @override
+  List<Object?> get props => [
+    status, transcript, wordCount, estimatedDurationSeconds, 
+    modelUsed, tokensUsed, contextProvided, errorMessage, errorType
+  ];
+}
+
+class AITranscriptValidation extends Equatable {
+  final bool valid;
+  final int characterCount;
+  final int wordCount;
+  final int estimatedTokens;
+  final String? error;
+
+  const AITranscriptValidation({
+    required this.valid,
+    this.characterCount = 0,
+    this.wordCount = 0,
+    this.estimatedTokens = 0,
+    this.error,
+  });
+
+  factory AITranscriptValidation.fromJson(Map<String, dynamic> json) => AITranscriptValidation(
+    valid: json['valid'] as bool,
+    characterCount: json['character_count'] as int? ?? 0,
+    wordCount: json['word_count'] as int? ?? 0,
+    estimatedTokens: json['estimated_tokens'] as int? ?? 0,
+    error: json['error'] as String?,
+  );
+
+  @override
+  List<Object?> get props => [valid, characterCount, wordCount, estimatedTokens, error];
+}
+
 // S3 configuration model
 class S3Configuration extends Equatable {
   final bool awsAccessKeyIdConfigured;
