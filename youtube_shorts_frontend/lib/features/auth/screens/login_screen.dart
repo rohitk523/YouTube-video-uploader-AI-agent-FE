@@ -17,11 +17,20 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
-  bool _isLoading = false;
+  final _loginFormKey = GlobalKey<FormState>();
+  final _registerFormKey = GlobalKey<FormState>();
+  
+  // Login form controllers
+  final _loginEmailController = TextEditingController();
+  final _loginPasswordController = TextEditingController();
+  bool _isLoginPasswordVisible = false;
+  bool _isLoginLoading = false;
+  
+  // Register form controllers
+  final _registerEmailController = TextEditingController();
+  final _registerPasswordController = TextEditingController();
+  bool _isRegisterPasswordVisible = false;
+  bool _isRegisterLoading = false;
   
   // Health check related variables
   HealthStatus _healthStatus = HealthStatus.unknown;
@@ -39,8 +48,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _loginEmailController.dispose();
+    _loginPasswordController.dispose();
+    _registerEmailController.dispose();
+    _registerPasswordController.dispose();
     super.dispose();
   }
 
@@ -62,16 +73,9 @@ class _LoginScreenState extends State<LoginScreen> {
       
       if (isHealthy) {
         Fluttertoast.showToast(
-          msg: "Backend is ready! You can now login.",
-          toastLength: Toast.LENGTH_LONG,
+          msg: "Backend is ready!",
+          toastLength: Toast.LENGTH_SHORT,
           backgroundColor: Colors.green,
-          textColor: Colors.white,
-        );
-      } else {
-        Fluttertoast.showToast(
-          msg: "Backend is not responding. Please try again.",
-          toastLength: Toast.LENGTH_LONG,
-          backgroundColor: Colors.red,
           textColor: Colors.white,
         );
       }
@@ -80,20 +84,13 @@ class _LoginScreenState extends State<LoginScreen> {
         _healthStatus = HealthStatus.unhealthy;
         _isCheckingHealth = false;
       });
-      
-      Fluttertoast.showToast(
-        msg: "Failed to check backend status. Please try again.",
-        toastLength: Toast.LENGTH_LONG,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-      );
     }
   }
 
   void _login() {
     if (_healthStatus != HealthStatus.healthy) {
       Fluttertoast.showToast(
-        msg: "Please check backend status first by tapping the refresh button.",
+        msg: "Backend is not ready. Please wait...",
         toastLength: Toast.LENGTH_LONG,
         backgroundColor: Colors.orange,
         textColor: Colors.white,
@@ -101,13 +98,34 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     
-    if (_formKey.currentState?.validate() ?? false) {
+    if (_loginFormKey.currentState?.validate() ?? false) {
       final request = UserLoginRequest(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+        email: _loginEmailController.text.trim(),
+        password: _loginPasswordController.text,
       );
       
       context.read<AuthBloc>().add(AuthLoginRequested(request));
+    }
+  }
+
+  void _register() {
+    if (_healthStatus != HealthStatus.healthy) {
+      Fluttertoast.showToast(
+        msg: "Backend is not ready. Please wait...",
+        toastLength: Toast.LENGTH_LONG,
+        backgroundColor: Colors.orange,
+        textColor: Colors.white,
+      );
+      return;
+    }
+    
+    if (_registerFormKey.currentState?.validate() ?? false) {
+      final request = UserRegisterRequest(
+        email: _registerEmailController.text.trim(),
+        password: _registerPasswordController.text,
+      );
+      
+      context.read<AuthBloc>().add(AuthRegisterRequested(request));
     }
   }
 
@@ -124,103 +142,22 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  IconData _getHealthStatusIcon() {
-    switch (_healthStatus) {
-      case HealthStatus.healthy:
-        return Icons.check_circle;
-      case HealthStatus.unhealthy:
-        return Icons.error;
-      case HealthStatus.checking:
-        return Icons.hourglass_empty;
-      case HealthStatus.unknown:
-        return Icons.help_outline;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isDesktop = screenWidth > 1024;
+    final isTablet = screenWidth > 768 && screenWidth <= 1024;
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0, top: 8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  onTap: _isCheckingHealth ? null : _checkBackendHealth,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _isCheckingHealth
-                            ? SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    _getHealthStatusColor(),
-                                  ),
-                                ),
-                              )
-                            : Icon(
-                                _getHealthStatusIcon(),
-                                color: _getHealthStatusColor(),
-                                size: 16,
-                              ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.refresh,
-                          color: _isCheckingHealth ? Colors.grey : Colors.black,
-                          size: 16,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _healthStatus == HealthStatus.unknown
-                      ? 'Check Status'
-                      : _healthStatus == HealthStatus.checking
-                          ? 'Checking...'
-                          : _healthStatus == HealthStatus.healthy
-                              ? 'Ready'
-                              : 'Offline',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: _getHealthStatusColor(),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           setState(() {
-            _isLoading = state is LoginLoading;
+            _isLoginLoading = state is LoginLoading;
+            _isRegisterLoading = state is RegisterLoading;
           });
           
-          if (state is LoginSuccess || state is AuthAuthenticated) {
+          if (state is LoginSuccess || state is RegisterSuccess || state is AuthAuthenticated) {
             Navigator.of(context).pushReplacementNamed(AppRouter.home);
           } else if (state is LoginError) {
             Fluttertoast.showToast(
@@ -229,223 +166,544 @@ class _LoginScreenState extends State<LoginScreen> {
               backgroundColor: Colors.red,
               textColor: Colors.white,
             );
+          } else if (state is RegisterError) {
+            Fluttertoast.showToast(
+              msg: state.message,
+              toastLength: Toast.LENGTH_LONG,
+              backgroundColor: Colors.red,
+              textColor: Colors.white,
+            );
           }
         },
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Center(
+        child: Container(
+          height: screenHeight,
+          child: isDesktop || isTablet 
+              ? _buildDesktopLayout()
+              : _buildMobileLayout(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout() {
+    return Row(
+      children: [
+        // Left Panel - Branding
+        Expanded(
+          flex: 1,
+          child: _buildLeftPanel(),
+        ),
+        // Right Panel - Forms
+        Expanded(
+          flex: 1,
+          child: _buildRightPanel(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          Container(
+            height: MediaQuery.of(context).size.height * 0.3,
+            child: _buildLeftPanel(),
+          ),
+          Container(
+            padding: const EdgeInsets.all(24),
+            child: _buildFormsContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeftPanel() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1e3c72), // Dark blue
+            Color(0xFF2a5298), // Medium blue
+            Color(0xFF3b82f6), // Lighter blue
+          ],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(48.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // BALA Brand
+            Text(
+              'BALA',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 3,
+              ),
+            ),
+            
+            const SizedBox(height: 60),
+            
+            // Main Title
+            Text(
+              'Login page',
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.w300,
+                color: Colors.white,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Subtitle
+            Text(
+              'Start your journey\nnow with us',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w300,
+                color: Colors.white.withOpacity(0.9),
+                height: 1.5,
+              ),
+            ),
+            
+            const SizedBox(height: 40),
+            
+            // Health Status Indicator
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _getHealthStatusColor().withOpacity(0.6),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _healthStatus == HealthStatus.healthy 
+                        ? Icons.check_circle 
+                        : _healthStatus == HealthStatus.checking
+                            ? Icons.hourglass_empty
+                            : Icons.error,
+                    color: _getHealthStatusColor(),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _healthStatus == HealthStatus.healthy 
+                        ? 'Backend Ready'
+                        : _healthStatus == HealthStatus.checking
+                            ? 'Checking...'
+                            : 'Backend Offline',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRightPanel() {
+    return Container(
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(48.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
               child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // App Logo
-                    Center(
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(20),
+                child: _buildFormsContent(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormsContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Create Account Form
+        _buildCreateAccountForm(),
+        
+        const SizedBox(height: 48),
+        
+        // Login Form
+        _buildLoginForm(),
+      ],
+    );
+  }
+
+  Widget _buildCreateAccountForm() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Form(
+        key: _registerFormKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Create an account',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Email field
+            TextFormField(
+              controller: _registerEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: 'Enter your email',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your email';
+                }
+                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  return 'Please enter a valid email';
+                }
+                return null;
+              },
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Password field
+            TextFormField(
+              controller: _registerPasswordController,
+              obscureText: !_isRegisterPasswordVisible,
+              decoration: InputDecoration(
+                hintText: 'Enter your password',
+                filled: true,
+                fillColor: Colors.white,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isRegisterPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey[600],
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isRegisterPasswordVisible = !_isRegisterPasswordVisible;
+                    });
+                  },
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your password';
+                }
+                if (value.length < 6) {
+                  return 'Password must be at least 6 characters';
+                }
+                return null;
+              },
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Create Account Button
+            SizedBox(
+              height: 50,
+              child: ElevatedButton(
+                onPressed: (_isRegisterLoading || _healthStatus != HealthStatus.healthy) ? null : _register,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: _isRegisterLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
-                        child: const Icon(
-                          Icons.play_circle_filled,
-                          size: 60,
-                          color: Colors.white,
+                      )
+                    : Text(
+                        'Create account',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Already have account link
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Already have an account? ',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    // Focus on login form (scroll down in mobile)
+                  },
+                  child: Text(
+                    'Log in',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w600,
                     ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Welcome text
-                    Text(
-                      'Welcome Back!',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    
-                    const SizedBox(height: 8),
-                    
-                    Text(
-                      'Sign in to continue creating amazing YouTube Shorts',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    
-                    const SizedBox(height: 48),
-                    
-                    // Health check status info
-                    if (_healthStatus != HealthStatus.healthy && _healthStatus != HealthStatus.unknown)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: _getHealthStatusColor().withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: _getHealthStatusColor().withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              _getHealthStatusIcon(),
-                              color: _getHealthStatusColor(),
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _healthStatus == HealthStatus.checking
-                                    ? 'Checking backend server status...'
-                                    : 'Backend server is not responding. Please tap the refresh button in the top-right corner to check again.',
-                                style: TextStyle(
-                                  color: _getHealthStatusColor(),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    
-                    // Login Form
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          // Email field
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              hintText: 'Enter your email',
-                              prefixIcon: Icon(Icons.email_outlined),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your email';
-                              }
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                                return 'Please enter a valid email';
-                              }
-                              return null;
-                            },
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          // Password field
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: !_isPasswordVisible,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              hintText: 'Enter your password',
-                              prefixIcon: const Icon(Icons.lock_outlined),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _isPasswordVisible
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _isPasswordVisible = !_isPasswordVisible;
-                                  });
-                                },
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your password';
-                              }
-                              if (value.length < 6) {
-                                return 'Password must be at least 6 characters';
-                              }
-                              return null;
-                            },
-                          ),
-                          
-                          const SizedBox(height: 32),
-                          
-                          // Login button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: (_isLoading || _healthStatus != HealthStatus.healthy) ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _healthStatus == HealthStatus.healthy 
-                                    ? null 
-                                    : Colors.grey[300],
-                                foregroundColor: _healthStatus == HealthStatus.healthy 
-                                    ? null 
-                                    : Colors.grey[600],
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
-                                  : Text(
-                                      _healthStatus == HealthStatus.healthy 
-                                          ? 'Sign In'
-                                          : 'Check Backend Status First',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Register link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Don't have an account? ",
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                            );
-                          },
-                          child: Text(
-                            'Sign Up',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoginForm() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Form(
+        key: _loginFormKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Login to your account',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Email field
+            TextFormField(
+              controller: _loginEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: 'Enter your email',
+                filled: true,
+                fillColor: Colors.grey[50],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your email';
+                }
+                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                  return 'Please enter a valid email';
+                }
+                return null;
+              },
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Password field
+            TextFormField(
+              controller: _loginPasswordController,
+              obscureText: !_isLoginPasswordVisible,
+              decoration: InputDecoration(
+                hintText: 'Enter your password',
+                filled: true,
+                fillColor: Colors.grey[50],
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isLoginPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey[600],
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isLoginPasswordVisible = !_isLoginPasswordVisible;
+                    });
+                  },
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.blue),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your password';
+                }
+                if (value.length < 6) {
+                  return 'Password must be at least 6 characters';
+                }
+                return null;
+              },
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Forgot Password Link
+            Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () {
+                  // TODO: Implement forgot password
+                },
+                child: Text(
+                  'Forgot ?',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
-          ),
+            
+            const SizedBox(height: 24),
+            
+            // Login Button
+            SizedBox(
+              height: 50,
+              child: ElevatedButton(
+                onPressed: (_isLoginLoading || _healthStatus != HealthStatus.healthy) ? null : _login,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: _isLoginLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        'Login now',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Sign up link
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "Don't have an account? ",
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    // Focus on register form (scroll up in mobile)
+                  },
+                  child: Text(
+                    'Sign up',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
