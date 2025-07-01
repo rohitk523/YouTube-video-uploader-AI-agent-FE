@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/di/service_locator.dart';
-import 'package:url_launcher/url_launcher.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 class VoicePreviewWidget extends StatefulWidget {
   final List<String> availableVoices;
@@ -30,8 +31,8 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
   Map<String, String> _voiceDescriptions = {};
   Map<String, bool> _voiceLoadingStates = {};
   
-  // Web-safe audio player using HTML5 audio
-  dynamic _currentAudioElement;
+  // HTML5 audio element for web playback
+  html.AudioElement? _currentAudioElement;
 
   // Voice information with descriptions and styles
   final Map<String, Map<String, dynamic>> _voiceInfo = {
@@ -99,7 +100,6 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
 
       setState(() {
         _voiceLoadingStates[voice] = true;
-        _currentlyPlaying = voice;
       });
 
       // Use custom text if available, otherwise use default
@@ -113,62 +113,64 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
         customText: previewText,
       );
 
-      // For web platform, open audio in new window for preview
       if (kIsWeb) {
-        // Create a temporary audio element for web
-        if (_currentAudioElement != null) {
-          _currentAudioElement.pause();
-        }
+        // Create HTML5 audio element for web playback
+        _currentAudioElement = html.AudioElement(audioUrl);
+        _currentAudioElement!.preload = 'auto';
         
-        // Show preview notification
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Opening voice preview for ${voice.toUpperCase()}...'),
-              backgroundColor: Colors.blue,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-        
-        // Open audio URL in new tab for preview
-        final uri = Uri.parse(audioUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      } else {
-        // For mobile platforms, show download option
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Voice preview: ${voice.toUpperCase()}'),
-              backgroundColor: Colors.blue,
-              action: SnackBarAction(
-                label: 'Download',
-                onPressed: () async {
-                  final uri = Uri.parse(audioUrl);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri);
-                  }
-                },
+        // Setup event listeners
+        _currentAudioElement!.onLoadedData.listen((_) {
+          if (mounted) {
+            setState(() {
+              _voiceLoadingStates[voice] = false;
+              _currentlyPlaying = voice;
+            });
+            // Start playback
+            _currentAudioElement!.play();
+          }
+        });
+
+        _currentAudioElement!.onEnded.listen((_) {
+          if (mounted) {
+            setState(() {
+              _currentlyPlaying = null;
+            });
+          }
+        });
+
+        _currentAudioElement!.onError.listen((error) {
+          if (mounted) {
+            setState(() {
+              _voiceLoadingStates[voice] = false;
+              _currentlyPlaying = null;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to play ${voice.toUpperCase()} preview'),
+                backgroundColor: Colors.red,
               ),
+            );
+          }
+        });
+
+        // Load the audio
+        _currentAudioElement!.load();
+        
+      } else {
+        // For mobile platforms, we'll implement this later
+        setState(() {
+          _voiceLoadingStates[voice] = false;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Voice preview available on web version'),
+              backgroundColor: Colors.orange,
             ),
           );
         }
       }
-
-      setState(() {
-        _voiceLoadingStates[voice] = false;
-      });
-
-      // Auto-reset playing state after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted && _currentlyPlaying == voice) {
-          setState(() {
-            _currentlyPlaying = null;
-          });
-        }
-      });
 
     } catch (e) {
       setState(() {
@@ -190,16 +192,19 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
   void _stopVoicePreview() {
     if (_currentAudioElement != null) {
       try {
-        _currentAudioElement.pause();
+        _currentAudioElement!.pause();
+        _currentAudioElement!.currentTime = 0; // Reset to beginning
       } catch (e) {
         // Ignore errors on cleanup
       }
       _currentAudioElement = null;
     }
     
-    setState(() {
-      _currentlyPlaying = null;
-    });
+    if (mounted) {
+      setState(() {
+        _currentlyPlaying = null;
+      });
+    }
   }
 
   @override
@@ -417,7 +422,7 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
                         ),
                       )
                     : Icon(
-                        isPlaying ? Icons.stop : Icons.play_arrow,
+                        isPlaying ? Icons.pause : Icons.play_arrow,
                         color: Colors.white,
                         size: 24,
                       ),
