@@ -18,22 +18,12 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _loginFormKey = GlobalKey<FormState>();
-  final _registerFormKey = GlobalKey<FormState>();
   
   // Login form controllers
   final _loginEmailController = TextEditingController();
   final _loginPasswordController = TextEditingController();
   bool _isLoginPasswordVisible = false;
   bool _isLoginLoading = false;
-  
-  // Register form controllers
-  final _registerEmailController = TextEditingController();
-  final _registerPasswordController = TextEditingController();
-  final _registerUsernameController = TextEditingController();
-  final _registerFirstNameController = TextEditingController();
-  final _registerLastNameController = TextEditingController();
-  bool _isRegisterPasswordVisible = false;
-  bool _isRegisterLoading = false;
   
   // Health check related variables
   HealthStatus _healthStatus = HealthStatus.unknown;
@@ -53,11 +43,6 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
-    _registerEmailController.dispose();
-    _registerPasswordController.dispose();
-    _registerUsernameController.dispose();
-    _registerFirstNameController.dispose();
-    _registerLastNameController.dispose();
     super.dispose();
   }
 
@@ -114,30 +99,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _register() {
-    if (_healthStatus != HealthStatus.healthy) {
-      Fluttertoast.showToast(
-        msg: "Backend is not ready. Please wait...",
-        toastLength: Toast.LENGTH_LONG,
-        backgroundColor: Colors.orange,
-        textColor: Colors.white,
-      );
-      return;
-    }
-    
-    if (_registerFormKey.currentState?.validate() ?? false) {
-      final request = UserRegisterRequest(
-        email: _registerEmailController.text.trim(),
-        password: _registerPasswordController.text,
-        username: _registerUsernameController.text.trim(),
-        firstName: _registerFirstNameController.text.trim(),
-        lastName: _registerLastNameController.text.trim(),
-      );
-      
-      context.read<AuthBloc>().add(AuthRegisterRequested(request));
-    }
-  }
-
   Color _getHealthStatusColor() {
     switch (_healthStatus) {
       case HealthStatus.healthy:
@@ -163,19 +124,11 @@ class _LoginScreenState extends State<LoginScreen> {
         listener: (context, state) {
           setState(() {
             _isLoginLoading = state is LoginLoading;
-            _isRegisterLoading = state is RegisterLoading;
           });
           
-          if (state is LoginSuccess || state is RegisterSuccess || state is AuthAuthenticated) {
+          if (state is LoginSuccess || state is AuthAuthenticated) {
             Navigator.of(context).pushReplacementNamed(AppRouter.home);
           } else if (state is LoginError) {
-            Fluttertoast.showToast(
-              msg: state.message,
-              toastLength: Toast.LENGTH_LONG,
-              backgroundColor: Colors.red,
-              textColor: Colors.white,
-            );
-          } else if (state is RegisterError) {
             Fluttertoast.showToast(
               msg: state.message,
               toastLength: Toast.LENGTH_LONG,
@@ -202,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
           flex: 1,
           child: _buildLeftPanel(),
         ),
-        // Right Panel - Forms
+        // Right Panel - Login Form
         Expanded(
           flex: 1,
           child: _buildRightPanel(),
@@ -221,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           Container(
             padding: const EdgeInsets.all(24),
-            child: _buildFormsContent(),
+            child: _buildLoginForm(),
           ),
         ],
       ),
@@ -341,294 +294,8 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                child: _buildFormsContent(),
+                child: _buildLoginForm(),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFormsContent() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Create Account Form
-        _buildCreateAccountForm(),
-        
-        const SizedBox(height: 48),
-        
-        // Login Form
-        _buildLoginForm(),
-      ],
-    );
-  }
-
-  Widget _buildCreateAccountForm() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Form(
-        key: _registerFormKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Create an account',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // First Name and Last Name Row
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _registerFirstNameController,
-                    decoration: InputDecoration(
-                      hintText: 'First name',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.blue),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Required';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    controller: _registerLastNameController,
-                    decoration: InputDecoration(
-                      hintText: 'Last name',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.blue),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Required';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Username field
-            TextFormField(
-              controller: _registerUsernameController,
-              decoration: InputDecoration(
-                hintText: 'Choose a username',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a username';
-                }
-                if (value.length < 3) {
-                  return 'Username must be at least 3 characters';
-                }
-                if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-                  return 'Username can only contain letters, numbers, and underscores';
-                }
-                return null;
-              },
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Email field
-            TextFormField(
-              controller: _registerEmailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                hintText: 'Enter your email',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your email';
-                }
-                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                  return 'Please enter a valid email';
-                }
-                return null;
-              },
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Password field
-            TextFormField(
-              controller: _registerPasswordController,
-              obscureText: !_isRegisterPasswordVisible,
-              decoration: InputDecoration(
-                hintText: 'Enter your password',
-                filled: true,
-                fillColor: Colors.white,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _isRegisterPasswordVisible ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.grey[600],
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isRegisterPasswordVisible = !_isRegisterPasswordVisible;
-                    });
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your password';
-                }
-                if (value.length < 6) {
-                  return 'Password must be at least 6 characters';
-                }
-                return null;
-              },
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Create Account Button
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: (_isRegisterLoading || _healthStatus != HealthStatus.healthy) ? null : _register,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-                child: _isRegisterLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        'Create account',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Already have account link
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Already have an account? ',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    // Focus on login form (scroll down in mobile)
-                  },
-                  child: Text(
-                    'Log in',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -643,6 +310,14 @@ class _LoginScreenState extends State<LoginScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 0,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Form(
         key: _loginFormKey,
@@ -804,7 +479,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 GestureDetector(
                   onTap: () {
-                    // Focus on register form (scroll up in mobile)
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                    );
                   },
                   child: Text(
                     'Sign up',
