@@ -113,13 +113,16 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
         customText: previewText,
       );
       
-      // The download_url already includes /api/v1, so we need to use the base domain only
+      // Get download URL from backend response
       String downloadPath = previewResponse['download_url'] as String;
-      // Remove /api/v1 prefix if it exists since our base URL already includes it
-      if (downloadPath.startsWith('/api/v1')) {
-        downloadPath = downloadPath.substring(7); // Remove '/api/v1'
+      
+      // Construct the full URL using base domain (without /api/v1 duplication)
+      // The download_url from backend already includes the full path with /api/v1
+      String baseUrl = _apiClient.currentApiUrl;
+      if (baseUrl.endsWith('/api/v1')) {
+        baseUrl = baseUrl.substring(0, baseUrl.length - 7); // Remove '/api/v1' from base
       }
-      String audioUrl = _apiClient.currentApiUrl + downloadPath;
+      String audioUrl = baseUrl + downloadPath;
 
       if (kIsWeb) {
         // Create HTML5 audio element for web playback
