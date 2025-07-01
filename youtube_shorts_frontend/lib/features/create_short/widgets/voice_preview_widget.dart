@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/di/service_locator.dart';
 import '../../../core/config/environment.dart';
+import '../../../core/constants/api_constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
@@ -86,6 +88,12 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
     super.initState();
   }
 
+  // Get access token for authenticated requests
+  Future<String?> _getAccessToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(ApiConstants.accessTokenKey);
+  }
+
   @override
   void dispose() {
     _stopVoicePreview();
@@ -122,47 +130,84 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
       String audioUrl = EnvironmentConfig.apiBaseUrl + downloadPath;
 
       if (kIsWeb) {
-        // Create HTML5 audio element for web playback
-        _currentAudioElement = html.AudioElement(audioUrl);
-        _currentAudioElement!.preload = 'auto';
-        
-        // Setup event listeners
-        _currentAudioElement!.onLoadedData.listen((_) {
-          if (mounted) {
-            setState(() {
-              _voiceLoadingStates[voice] = false;
-              _currentlyPlaying = voice;
+        // Fetch audio with authentication headers and create blob URL
+        try {
+          final response = await html.window.fetch(audioUrl, {
+            'method': 'GET',
+            'headers': {
+              'Authorization': 'Bearer ${await _getAccessToken()}',
+              'Accept': 'audio/*',
+            },
+          });
+          
+          if (response.status == 200) {
+            final blob = await response.blob();
+            final blobUrl = html.Url.createObjectUrlFromBlob(blob);
+            
+            // Create HTML5 audio element with authenticated blob URL
+            _currentAudioElement = html.AudioElement(blobUrl);
+            _currentAudioElement!.preload = 'auto';
+            
+            // Setup event listeners
+            _currentAudioElement!.onLoadedData.listen((_) {
+              if (mounted) {
+                setState(() {
+                  _voiceLoadingStates[voice] = false;
+                  _currentlyPlaying = voice;
+                });
+                // Start playback
+                _currentAudioElement!.play();
+              }
             });
-            // Start playback
-            _currentAudioElement!.play();
-          }
-        });
 
-        _currentAudioElement!.onEnded.listen((_) {
-          if (mounted) {
-            setState(() {
-              _currentlyPlaying = null;
+            _currentAudioElement!.onEnded.listen((_) {
+              if (mounted) {
+                setState(() {
+                  _currentlyPlaying = null;
+                });
+                // Clean up blob URL
+                html.Url.revokeObjectUrl(blobUrl);
+              }
             });
-          }
-        });
 
-        _currentAudioElement!.onError.listen((error) {
-          if (mounted) {
-            setState(() {
-              _voiceLoadingStates[voice] = false;
-              _currentlyPlaying = null;
+            _currentAudioElement!.onError.listen((error) {
+              if (mounted) {
+                setState(() {
+                  _voiceLoadingStates[voice] = false;
+                  _currentlyPlaying = null;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to play ${voice.toUpperCase()} preview'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                // Clean up blob URL
+                html.Url.revokeObjectUrl(blobUrl);
+              }
             });
+
+            // Load the audio
+            _currentAudioElement!.load();
+            
+          } else {
+            throw Exception('Failed to fetch audio: ${response.status}');
+          }
+        } catch (e) {
+          setState(() {
+            _voiceLoadingStates[voice] = false;
+            _currentlyPlaying = null;
+          });
+          
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Failed to play ${voice.toUpperCase()} preview'),
+                content: Text('Failed to load ${voice.toUpperCase()} preview'),
                 backgroundColor: Colors.red,
               ),
             );
           }
-        });
-
-        // Load the audio
-        _currentAudioElement!.load();
+        }
         
       } else {
         // For mobile platforms, we'll implement this later
