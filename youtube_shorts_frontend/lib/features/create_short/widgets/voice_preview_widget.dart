@@ -136,9 +136,7 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
       if (kIsWeb) {
         // Fetch audio with authentication headers and create blob URL
         try {
-          print('🎵 Fetching audio from: $audioUrl');
           final token = await _getAccessToken();
-          print('🔐 Using token: ${token?.substring(0, 20)}...');
           
           final response = await html.window.fetch(audioUrl, {
             'method': 'GET',
@@ -148,9 +146,7 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
             },
           });
           
-          print('📡 Response status: ${response.status}');
-          
-          if (response.status == 200) {
+          if (response.ok) {
             final blob = await response.blob();
             final blobUrl = html.Url.createObjectUrlFromBlob(blob);
             
@@ -201,10 +197,9 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
             _currentAudioElement!.load();
             
           } else {
-            throw Exception('Failed to fetch audio: ${response.status}');
+            throw Exception('Failed to fetch audio: ${response.statusText}');
           }
         } catch (e) {
-          print('❌ Error in voice preview: $e');
           setState(() {
             _voiceLoadingStates[voice] = false;
             _currentlyPlaying = null;
@@ -213,9 +208,8 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Failed to load ${voice.toUpperCase()} preview: ${e.toString()}'),
+                content: Text('Failed to load ${voice.toUpperCase()} preview'),
                 backgroundColor: Colors.red,
-                duration: const Duration(seconds: 5),
               ),
             );
           }
@@ -238,7 +232,6 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
       }
 
     } catch (e) {
-      print('❌ Error generating voice preview: $e');
       setState(() {
         _voiceLoadingStates[voice] = false;
         _currentlyPlaying = null;
@@ -247,9 +240,8 @@ class _VoicePreviewWidgetState extends State<VoicePreviewWidget> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to generate voice preview: ${e.toString()}'),
+            content: Text('Failed to generate voice preview'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
           ),
         );
       }
