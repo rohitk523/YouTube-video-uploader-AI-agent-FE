@@ -66,7 +66,7 @@ class CreateJobRequest extends Equatable {
       if (videoUploadId != null) 'video_upload_id': videoUploadId,
       if (s3VideoId != null) 's3_video_id': s3VideoId,
       if (transcriptUploadId != null) 'transcript_upload_id': transcriptUploadId,
-      if (transcriptText != null) 'transcript_text': transcriptText,
+      if (transcriptText != null) 'transcript_content': transcriptText,
       'title': title,
       'description': description,
       'voice': voice,
