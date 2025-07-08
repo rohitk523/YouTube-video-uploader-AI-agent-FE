@@ -520,4 +520,204 @@ class VoicesResponse extends Equatable {
 
   @override
   List<Object> get props => [voices, defaultVoice];
+}
+
+// Enhanced create job request with custom naming
+class CreateJobWithStructureRequest extends Equatable {
+  final String? videoUploadId;
+  final String? s3VideoId;
+  final String? transcriptUploadId;
+  final String? transcriptText;
+  final String title;
+  final String description;
+  final String voice;
+  final List<String> tags;
+  final bool mockMode;
+  final String? customVideoName;
+  final String? customTranscriptName;
+
+  const CreateJobWithStructureRequest({
+    this.videoUploadId,
+    this.s3VideoId,
+    this.transcriptUploadId,
+    this.transcriptText,
+    required this.title,
+    required this.description,
+    required this.voice,
+    required this.tags,
+    this.mockMode = false,
+    this.customVideoName,
+    this.customTranscriptName,
+  }) : assert(
+    (videoUploadId != null) ^ (s3VideoId != null),
+    'Either videoUploadId or s3VideoId must be provided, but not both',
+  ), assert(
+    (transcriptUploadId != null) ^ (transcriptText != null),
+    'Either transcriptUploadId or transcriptText must be provided, but not both',
+  );
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (videoUploadId != null) 'video_upload_id': videoUploadId,
+      if (s3VideoId != null) 's3_video_id': s3VideoId,
+      if (transcriptUploadId != null) 'transcript_upload_id': transcriptUploadId,
+      if (transcriptText != null) 'transcript_text': transcriptText,
+      'title': title,
+      'description': description,
+      'voice': voice,
+      'tags': tags,
+      'mock_mode': mockMode,
+    };
+  }
+
+  Map<String, dynamic> toQueryParams() {
+    return {
+      if (customVideoName != null && customVideoName!.isNotEmpty) 
+        'custom_video_name': customVideoName!,
+      if (customTranscriptName != null && customTranscriptName!.isNotEmpty) 
+        'custom_transcript_name': customTranscriptName!,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+    videoUploadId, s3VideoId, transcriptUploadId, transcriptText, title, description, 
+    voice, tags, mockMode, customVideoName, customTranscriptName
+  ];
+}
+
+// User jobs with files response
+class UserJobsWithFilesResponse extends Equatable {
+  final List<JobWithFiles> jobs;
+  final int total;
+  final int page;
+  final int pageSize;
+  final int totalPages;
+
+  const UserJobsWithFilesResponse({
+    required this.jobs,
+    required this.total,
+    required this.page,
+    required this.pageSize,
+    required this.totalPages,
+  });
+
+  factory UserJobsWithFilesResponse.fromJson(Map<String, dynamic> json) => UserJobsWithFilesResponse(
+    jobs: (json['jobs'] as List<dynamic>)
+        .map((job) => JobWithFiles.fromJson(job as Map<String, dynamic>))
+        .toList(),
+    total: json['total'] as int,
+    page: json['page'] as int,
+    pageSize: json['page_size'] as int,
+    totalPages: json['total_pages'] as int,
+  );
+
+  @override
+  List<Object> get props => [jobs, total, page, pageSize, totalPages];
+}
+
+class JobWithFiles extends Equatable {
+  final Job job;
+  final List<Map<String, dynamic>> videos;
+  final int videoCount;
+  final String folderPath;
+  final String? fileError;
+
+  const JobWithFiles({
+    required this.job,
+    required this.videos,
+    required this.videoCount,
+    required this.folderPath,
+    this.fileError,
+  });
+
+  factory JobWithFiles.fromJson(Map<String, dynamic> json) => JobWithFiles(
+    job: Job.fromJson(json['job'] as Map<String, dynamic>),
+    videos: (json['videos'] as List<dynamic>)
+        .map((video) => video as Map<String, dynamic>)
+        .toList(),
+    videoCount: json['video_count'] as int,
+    folderPath: json['folder_path'] as String,
+    fileError: json['file_error'] as String?,
+  );
+
+  @override
+  List<Object?> get props => [job, videos, videoCount, folderPath, fileError];
+}
+
+// Move temp files response
+class MoveTempFilesResponse extends Equatable {
+  final String jobId;
+  final String userId;
+  final List<MovedFile> movedFiles;
+  final List<FileError> errors;
+
+  const MoveTempFilesResponse({
+    required this.jobId,
+    required this.userId,
+    required this.movedFiles,
+    required this.errors,
+  });
+
+  factory MoveTempFilesResponse.fromJson(Map<String, dynamic> json) => MoveTempFilesResponse(
+    jobId: json['job_id'] as String,
+    userId: json['user_id'] as String,
+    movedFiles: (json['moved_files'] as List<dynamic>)
+        .map((file) => MovedFile.fromJson(file as Map<String, dynamic>))
+        .toList(),
+    errors: (json['errors'] as List<dynamic>)
+        .map((error) => FileError.fromJson(error as Map<String, dynamic>))
+        .toList(),
+  );
+
+  bool get hasErrors => errors.isNotEmpty;
+  bool get isSuccess => errors.isEmpty && movedFiles.isNotEmpty;
+
+  @override
+  List<Object> get props => [jobId, userId, movedFiles, errors];
+}
+
+class MovedFile extends Equatable {
+  final String type;
+  final String uploadId;
+  final String oldKey;
+  final String newKey;
+
+  const MovedFile({
+    required this.type,
+    required this.uploadId,
+    required this.oldKey,
+    required this.newKey,
+  });
+
+  factory MovedFile.fromJson(Map<String, dynamic> json) => MovedFile(
+    type: json['type'] as String,
+    uploadId: json['upload_id'] as String,
+    oldKey: json['old_key'] as String,
+    newKey: json['new_key'] as String,
+  );
+
+  @override
+  List<Object> get props => [type, uploadId, oldKey, newKey];
+}
+
+class FileError extends Equatable {
+  final String type;
+  final String uploadId;
+  final String error;
+
+  const FileError({
+    required this.type,
+    required this.uploadId,
+    required this.error,
+  });
+
+  factory FileError.fromJson(Map<String, dynamic> json) => FileError(
+    type: json['type'] as String,
+    uploadId: json['upload_id'] as String,
+    error: json['error'] as String,
+  );
+
+  @override
+  List<Object> get props => [type, uploadId, error];
 } 

@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 import '../network/api_client.dart';
 import '../../features/auth/repository/auth_repository.dart';
+import '../../features/auth/repository/secret_repository.dart';
 import '../../features/upload/repository/upload_repository.dart';
 import '../../features/jobs/repository/jobs_repository.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
@@ -19,6 +20,10 @@ class ServiceLocator {
     // Repositories
     getIt.registerLazySingleton<AuthRepository>(
       () => AuthRepositoryImpl(getIt<ApiClient>()),
+    );
+    
+    getIt.registerLazySingleton<SecretRepository>(
+      () => SecretRepositoryImpl(getIt<ApiClient>()),
     );
     
     getIt.registerLazySingleton<UploadRepository>(

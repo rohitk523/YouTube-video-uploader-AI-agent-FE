@@ -9,6 +9,7 @@ class UploadResponse extends Equatable {
   final String fileType;
   final double fileSizeMb;
   final DateTime uploadTime;
+  final String? customName;
 
   const UploadResponse({
     required this.id,
@@ -18,6 +19,7 @@ class UploadResponse extends Equatable {
     required this.fileType,
     required this.fileSizeMb,
     required this.uploadTime,
+    this.customName,
   });
 
   factory UploadResponse.fromJson(Map<String, dynamic> json) => UploadResponse(
@@ -28,6 +30,7 @@ class UploadResponse extends Equatable {
     fileType: json['file_type'] as String,
     fileSizeMb: (json['file_size_mb'] as num).toDouble(),
     uploadTime: DateTime.parse(json['upload_time'] as String),
+    customName: json['custom_name'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -38,10 +41,11 @@ class UploadResponse extends Equatable {
     'file_type': fileType,
     'file_size_mb': fileSizeMb,
     'upload_time': uploadTime.toIso8601String(),
+    if (customName != null) 'custom_name': customName,
   };
 
   @override
-  List<Object> get props => [id, uploadId, filename, originalFilename, fileType, fileSizeMb, uploadTime];
+  List<Object?> get props => [id, uploadId, filename, originalFilename, fileType, fileSizeMb, uploadTime, customName];
 }
 
 // Transcript upload request model
@@ -220,4 +224,151 @@ class UploadConfigResponse extends Equatable {
 
   @override
   List<Object> get props => [status, s3Configuration, recommendations];
+}
+
+// Enhanced upload request models
+class VideoUploadRequest extends Equatable {
+  final String title;
+  final String description;
+  final String? customName;
+  final bool isTemp;
+
+  const VideoUploadRequest({
+    required this.title,
+    required this.description,
+    this.customName,
+    this.isTemp = true,
+  });
+
+  Map<String, dynamic> toFields() => {
+    'title': title,
+    'description': description,
+    if (customName != null && customName!.isNotEmpty) 'custom_name': customName!,
+    'is_temp': isTemp.toString(),
+  };
+
+  @override
+  List<Object?> get props => [title, description, customName, isTemp];
+}
+
+class TranscriptFileUploadRequest extends Equatable {
+  final String title;
+  final String? customName;
+  final bool isTemp;
+
+  const TranscriptFileUploadRequest({
+    required this.title,
+    this.customName,
+    this.isTemp = true,
+  });
+
+  Map<String, dynamic> toFields() => {
+    'title': title,
+    if (customName != null && customName!.isNotEmpty) 'custom_name': customName!,
+    'is_temp': isTemp.toString(),
+  };
+
+  @override
+  List<Object?> get props => [title, customName, isTemp];
+}
+
+// Enhanced transcript upload request model
+class EnhancedTranscriptUploadRequest extends Equatable {
+  final String content;
+  final String? customName;
+  final bool isTemp;
+
+  const EnhancedTranscriptUploadRequest({
+    required this.content,
+    this.customName,
+    this.isTemp = true,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'content': content,
+    if (customName != null && customName!.isNotEmpty) 'custom_name': customName!,
+  };
+
+  Map<String, dynamic> toQueryParams() => {
+    if (customName != null && customName!.isNotEmpty) 'custom_name': customName!,
+    'is_temp': isTemp.toString(),
+  };
+
+  @override
+  List<Object?> get props => [content, customName, isTemp];
+}
+
+// User-specific video models
+class UserVideoResponse extends Equatable {
+  final String status;
+  final String userId;
+  final List<UserVideoItem> videos;
+  final int videoCount;
+  final String? filteredByJob;
+  final String folderStructure;
+  final int limit;
+
+  const UserVideoResponse({
+    required this.status,
+    required this.userId,
+    required this.videos,
+    required this.videoCount,
+    this.filteredByJob,
+    required this.folderStructure,
+    required this.limit,
+  });
+
+  factory UserVideoResponse.fromJson(Map<String, dynamic> json) => UserVideoResponse(
+    status: json['status'] as String,
+    userId: json['user_id'] as String,
+    videos: (json['videos'] as List<dynamic>)
+        .map((video) => UserVideoItem.fromJson(video as Map<String, dynamic>))
+        .toList(),
+    videoCount: json['video_count'] as int,
+    filteredByJob: json['filtered_by_job'] as String?,
+    folderStructure: json['folder_structure'] as String,
+    limit: json['limit'] as int,
+  );
+
+  @override
+  List<Object?> get props => [status, userId, videos, videoCount, filteredByJob, folderStructure, limit];
+}
+
+class UserVideoItem extends Equatable {
+  final String key;
+  final int size;
+  final DateTime lastModified;
+  final String etag;
+  final Map<String, dynamic> metadata;
+  final String? presignedUrl;
+  final String? metadataError;
+
+  const UserVideoItem({
+    required this.key,
+    required this.size,
+    required this.lastModified,
+    required this.etag,
+    required this.metadata,
+    this.presignedUrl,
+    this.metadataError,
+  });
+
+  factory UserVideoItem.fromJson(Map<String, dynamic> json) => UserVideoItem(
+    key: json['key'] as String,
+    size: json['size'] as int,
+    lastModified: DateTime.parse(json['last_modified'] as String),
+    etag: json['etag'] as String,
+    metadata: json['metadata'] as Map<String, dynamic>? ?? {},
+    presignedUrl: json['presigned_url'] as String?,
+    metadataError: json['metadata_error'] as String?,
+  );
+
+  // Helper getters
+  String get filename => key.split('/').last;
+  String? get customName => metadata['custom-name'] as String?;
+  String get displayName => customName ?? filename;
+  double get sizeMB => size / (1024 * 1024);
+
+  @override
+  List<Object?> get props => [key, size, lastModified, etag, metadata, presignedUrl, metadataError];
 } 

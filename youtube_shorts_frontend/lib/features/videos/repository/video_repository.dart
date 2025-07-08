@@ -1,6 +1,7 @@
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/models/video_models.dart';
+import '../../../shared/models/upload_models.dart';
 
 class VideoRepository {
   final ApiClient _apiClient;
@@ -124,6 +125,38 @@ class VideoRepository {
       return response.data as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Failed to get sync status: $e');
+    }
+  }
+
+  /// Get user's videos from S3 with proper user separation (NEW)
+  Future<UserVideoResponse> getUserS3Videos({
+    String? jobId,
+    int limit = 20,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'limit': limit,
+        if (jobId != null) 'job_id': jobId,
+      };
+
+      final response = await _apiClient.get(
+        ApiConstants.userS3VideosEndpoint,
+        queryParameters: queryParams,
+      );
+
+      return UserVideoResponse.fromJson(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw Exception('Failed to fetch user S3 videos: $e');
+    }
+  }
+
+  /// Get recent videos for current user (ENHANCED)
+  Future<List<UserVideoItem>> getRecentUserVideos({int limit = 5}) async {
+    try {
+      final response = await getUserS3Videos(limit: limit);
+      return response.videos.take(limit).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch recent user videos: $e');
     }
   }
 } 

@@ -12,6 +12,7 @@ abstract class UploadRepository {
     File? videoFile, {
     required String title,
     required String description,
+    String? customName,
     PlatformFile? platformFile,
     bool isTemp = true,
     void Function(double)? onProgress,
@@ -19,10 +20,12 @@ abstract class UploadRepository {
   Future<UploadResponse> uploadTranscriptText(
     String transcriptText, {
     required String title,
+    String? customName,
   });
   Future<UploadResponse> uploadTranscriptFile(
     File? transcriptFile, {
     required String title,
+    String? customName,
     PlatformFile? platformFile,
     void Function(double)? onProgress,
   });
@@ -51,19 +54,28 @@ class UploadRepositoryImpl implements UploadRepository {
     File? videoFile, {
     required String title,
     required String description,
+    String? customName,
     PlatformFile? platformFile,
     bool isTemp = true,
     void Function(double)? onProgress,
   }) async {
     try {
+      final queryParams = <String, String>{
+        'is_temp': isTemp.toString(),
+      };
+      
+      if (customName != null && customName.isNotEmpty) {
+        queryParams['custom_name'] = customName;
+      }
+
       final response = await _apiClient.uploadFile(
         ApiConstants.uploadVideo,
         videoFile,
         platformFile: platformFile,
+        queryParameters: queryParams,
         additionalFields: {
           'title': title,
           'description': description,
-          'is_temp': isTemp.toString(),
         },
         onSendProgress: onProgress != null 
           ? (sent, total) => onProgress(sent / total) 
@@ -80,6 +92,7 @@ class UploadRepositoryImpl implements UploadRepository {
   Future<UploadResponse> uploadTranscriptText(
     String transcriptText, {
     required String title,
+    String? customName,
   }) async {
     try {
       final request = TranscriptUploadRequest(
@@ -87,12 +100,21 @@ class UploadRepositoryImpl implements UploadRepository {
         isTemp: true,
       );
       
+      final queryParams = <String, String>{
+        'is_temp': 'true',
+      };
+      
+      if (customName != null && customName.isNotEmpty) {
+        queryParams['custom_name'] = customName;
+      }
+      
       final response = await _apiClient.post(
         ApiConstants.uploadTranscriptText,
         data: json.encode({
           ...request.toJson(),
           'title': title,
         }),
+        queryParameters: queryParams,
       );
       
       return UploadResponse.fromJson(response.data);
@@ -105,17 +127,26 @@ class UploadRepositoryImpl implements UploadRepository {
   Future<UploadResponse> uploadTranscriptFile(
     File? transcriptFile, {
     required String title,
+    String? customName,
     PlatformFile? platformFile,
     void Function(double)? onProgress,
   }) async {
     try {
+      final queryParams = <String, String>{
+        'is_temp': 'true',
+      };
+      
+      if (customName != null && customName.isNotEmpty) {
+        queryParams['custom_name'] = customName;
+      }
+
       final response = await _apiClient.uploadFile(
         ApiConstants.uploadTranscriptFile,
         transcriptFile,
         platformFile: platformFile,
+        queryParameters: queryParams,
         additionalFields: {
           'title': title,
-          'is_temp': 'true',
         },
         onSendProgress: onProgress != null 
           ? (sent, total) => onProgress(sent / total) 

@@ -137,14 +137,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           
           if (state is RegisterSuccess) {
             Fluttertoast.showToast(
-              msg: "Registration successful! Please login.",
+              msg: "Registration successful! Now upload your OAuth credentials.",
               toastLength: Toast.LENGTH_LONG,
               backgroundColor: Colors.green,
               textColor: Colors.white,
             );
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
-            );
+            Navigator.of(context).pushReplacementNamed(AppRouter.secretUpload);
           } else if (state is RegisterError) {
             Fluttertoast.showToast(
               msg: state.message,

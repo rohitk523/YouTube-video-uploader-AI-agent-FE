@@ -43,9 +43,13 @@ class ApiConstants {
   // Jobs endpoints
   static const String jobsEndpoint = '/jobs';
   static const String createJobEndpoint = '$jobsEndpoint/create';
+  static const String createJobWithStructureEndpoint = '$jobsEndpoint/create-with-structure';
+  static const String userJobsWithFilesEndpoint = '$jobsEndpoint/user-jobs-with-files';
   
   // Legacy job endpoint names
   static const String createJob = createJobEndpoint;
+  static const String createJobWithStructure = createJobWithStructureEndpoint;
+  static const String userJobsWithFiles = userJobsWithFilesEndpoint;
   static const String listJobs = jobsEndpoint;
   
   // Job helper methods
@@ -53,11 +57,17 @@ class ApiConstants {
   static String getJobStatus(String jobId) => '$jobsEndpoint/$jobId/status';
   static String deleteJob(String jobId) => '$jobsEndpoint/$jobId';
   static String downloadJobVideo(String jobId) => '$jobsEndpoint/$jobId/download';
+  static String moveTempFilesToJob(String jobId) => '$jobsEndpoint/$jobId/move-temp-files';
   
   // YouTube endpoints
   static const String youtubeEndpoint = '/youtube';
   static const String downloadEndpoint = '$youtubeEndpoint/download';
   static const String uploadToYoutubeEndpoint = '$youtubeEndpoint/upload-from-job';
+  
+  // YouTube OAuth endpoints
+  static const String youtubeAuthUrl = '$youtubeEndpoint/auth-url';
+  static const String youtubeCallback = '$youtubeEndpoint/callback';
+  static const String youtubeAuthStatus = '$youtubeEndpoint/auth-status';
   
   // Legacy YouTube endpoint names
   static const String voices = '$youtubeEndpoint/voices';
@@ -69,6 +79,16 @@ class ApiConstants {
   
   // Videos endpoints (NEW)
   static const String videosEndpoint = '/videos';
+  static const String userS3VideosEndpoint = '$videosEndpoint/user-s3-videos';
+  
+  // Secrets endpoints (NEW)
+  static const String secretsEndpoint = '/secrets';
+  static const String secretsValidate = '$secretsEndpoint/validate';
+  static const String secretsUpload = '$secretsEndpoint/upload';
+  static const String secretsStatus = '$secretsEndpoint/status';
+  static const String secretsList = '$secretsEndpoint/list';
+  static const String secretsDelete = '$secretsEndpoint';
+  static const String secretsReupload = '$secretsEndpoint/reupload';
   
   // System endpoints
   static const String healthEndpoint = '/health';
