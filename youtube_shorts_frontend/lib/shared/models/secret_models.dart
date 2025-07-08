@@ -122,12 +122,14 @@ class SecretStatusResponse extends Equatable {
   final int secretCount;
   final int activeSecrets;
   final DateTime? latestUpload;
+  final bool hasYouTubeAuth;
 
   const SecretStatusResponse({
     required this.hasSecrets,
     required this.secretCount,
     required this.activeSecrets,
     this.latestUpload,
+    required this.hasYouTubeAuth,
   });
 
   factory SecretStatusResponse.fromJson(Map<String, dynamic> json) {
@@ -138,9 +140,84 @@ class SecretStatusResponse extends Equatable {
       latestUpload: json['latest_upload'] != null 
           ? DateTime.parse(json['latest_upload']) 
           : null,
+      hasYouTubeAuth: json['youtube_authenticated'] ?? false,  // Fixed: use youtube_authenticated from backend
     );
   }
 
   @override
-  List<Object?> get props => [hasSecrets, secretCount, activeSecrets, latestUpload];
+  List<Object?> get props => [hasSecrets, secretCount, activeSecrets, latestUpload, hasYouTubeAuth];
+}
+
+// YouTube OAuth URL response model
+class YouTubeAuthUrlResponse extends Equatable {
+  final String authUrl;
+  final String state;
+
+  const YouTubeAuthUrlResponse({
+    required this.authUrl,
+    required this.state,
+  });
+
+  factory YouTubeAuthUrlResponse.fromJson(Map<String, dynamic> json) {
+    return YouTubeAuthUrlResponse(
+      authUrl: json['auth_url'],
+      state: json['state'],
+    );
+  }
+
+  @override
+  List<Object> get props => [authUrl, state];
+}
+
+// YouTube OAuth callback response model
+class YouTubeAuthCallbackResponse extends Equatable {
+  final bool success;
+  final String message;
+  final bool authenticated;
+
+  const YouTubeAuthCallbackResponse({
+    required this.success,
+    required this.message,
+    required this.authenticated,
+  });
+
+  factory YouTubeAuthCallbackResponse.fromJson(Map<String, dynamic> json) {
+    return YouTubeAuthCallbackResponse(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      authenticated: json['authenticated'] ?? false,
+    );
+  }
+
+  @override
+  List<Object> get props => [success, message, authenticated];
+}
+
+// YouTube OAuth status response model
+class YouTubeAuthStatusResponse extends Equatable {
+  final bool isAuthenticated;
+  final String? channelId;
+  final String? channelTitle;
+  final DateTime? authenticatedAt;
+
+  const YouTubeAuthStatusResponse({
+    required this.isAuthenticated,
+    this.channelId,
+    this.channelTitle,
+    this.authenticatedAt,
+  });
+
+  factory YouTubeAuthStatusResponse.fromJson(Map<String, dynamic> json) {
+    return YouTubeAuthStatusResponse(
+      isAuthenticated: json['is_authenticated'] ?? false,
+      channelId: json['channel_id'],
+      channelTitle: json['channel_title'],
+      authenticatedAt: json['authenticated_at'] != null 
+          ? DateTime.parse(json['authenticated_at']) 
+          : null,
+    );
+  }
+
+  @override
+  List<Object?> get props => [isAuthenticated, channelId, channelTitle, authenticatedAt];
 } 

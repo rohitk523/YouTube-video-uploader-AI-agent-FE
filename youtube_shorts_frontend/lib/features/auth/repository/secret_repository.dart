@@ -9,13 +9,18 @@ import '../../../shared/models/secret_models.dart';
 
 abstract class SecretRepository {
   Future<SecretValidationResponse> validateSecret(File jsonFile);
-  Future<SecretUploadResponse> uploadSecret(File jsonFile);
   Future<SecretValidationResponse> validateSecretWeb(PlatformFile platformFile);
+  Future<SecretUploadResponse> uploadSecret(File jsonFile);
   Future<SecretUploadResponse> uploadSecretWeb(PlatformFile platformFile);
   Future<SecretStatusResponse> getSecretStatus();
   Future<List<SecretResponse>> getUserSecrets();
   Future<void> deleteSecret(String secretId);
   Future<SecretUploadResponse> reuploadSecret(File jsonFile);
+  
+  // YouTube OAuth methods
+  Future<YouTubeAuthUrlResponse> getYouTubeAuthUrl();
+  Future<YouTubeAuthCallbackResponse> handleYouTubeCallback(String code, String state);
+  Future<YouTubeAuthStatusResponse> getYouTubeAuthStatus();
 }
 
 class SecretRepositoryImpl implements SecretRepository {
@@ -177,6 +182,42 @@ class SecretRepositoryImpl implements SecretRepository {
       );
       
       return SecretUploadResponse.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  @override
+  Future<YouTubeAuthUrlResponse> getYouTubeAuthUrl() async {
+    try {
+      final response = await _apiClient.get(ApiConstants.youtubeAuthUrl);
+      return YouTubeAuthUrlResponse.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  @override
+  Future<YouTubeAuthCallbackResponse> handleYouTubeCallback(String code, String state) async {
+    try {
+      final response = await _apiClient.post(
+        ApiConstants.youtubeCallback,
+        data: {
+          'code': code,
+          'state': state,
+        },
+      );
+      return YouTubeAuthCallbackResponse.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  @override
+  Future<YouTubeAuthStatusResponse> getYouTubeAuthStatus() async {
+    try {
+      final response = await _apiClient.get(ApiConstants.youtubeAuthStatus);
+      return YouTubeAuthStatusResponse.fromJson(response.data);
     } catch (e) {
       throw _handleError(e);
     }

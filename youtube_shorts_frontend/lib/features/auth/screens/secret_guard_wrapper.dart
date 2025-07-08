@@ -34,32 +34,40 @@ class _SecretGuardWrapperState extends State<SecretGuardWrapper> {
   Future<void> _checkSecretStatus() async {
     try {
       final status = await _secretRepository.getSecretStatus();
-      setState(() {
-        _hasSecrets = status.hasSecrets && status.activeSecrets > 0;
-        _isChecking = false;
-      });
+      if (mounted) {
+        setState(() {
+          _hasSecrets = status.hasSecrets && status.activeSecrets > 0 && status.hasYouTubeAuth;
+          _isChecking = false;
+        });
+      }
       
       if (!_hasSecrets) {
         // Redirect to secret upload screen
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.of(context).pushReplacementNamed(AppRouter.secretUpload);
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed(AppRouter.secretUpload);
+          }
         });
       }
     } catch (e) {
-      setState(() {
-        _isChecking = false;
-        _errorMessage = 'Failed to check OAuth credentials: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _isChecking = false;
+          _errorMessage = 'Failed to check OAuth credentials: $e';
+        });
+      }
       
       Fluttertoast.showToast(
-        msg: 'Please upload OAuth credentials to continue',
+        msg: 'Please complete OAuth setup to continue',
         backgroundColor: Colors.orange,
         textColor: Colors.white,
       );
       
       // Redirect to secret upload screen on error
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacementNamed(AppRouter.secretUpload);
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(AppRouter.secretUpload);
+        }
       });
     }
   }

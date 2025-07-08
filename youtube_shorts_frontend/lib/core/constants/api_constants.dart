@@ -59,6 +59,11 @@ class ApiConstants {
   static const String downloadEndpoint = '$youtubeEndpoint/download';
   static const String uploadToYoutubeEndpoint = '$youtubeEndpoint/upload-from-job';
   
+  // YouTube OAuth endpoints
+  static const String youtubeAuthUrl = '$youtubeEndpoint/auth-url';
+  static const String youtubeCallback = '$youtubeEndpoint/callback';
+  static const String youtubeAuthStatus = '$youtubeEndpoint/auth-status';
+  
   // Legacy YouTube endpoint names
   static const String voices = '$youtubeEndpoint/voices';
   static const String youtubeInfo = '$youtubeEndpoint/info';

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -13,6 +14,10 @@ class ApiClient {
   static ApiClient? _instance;
   String _currentBaseUrl = '';
   bool _isUsingFallback = false;
+  
+  // Add refresh token concurrency control
+  static bool _isRefreshing = false;
+  static List<Completer<bool>> _refreshCompleters = [];
   
   factory ApiClient() {
     _instance ??= ApiClient._internal();
@@ -57,8 +62,17 @@ class ApiClient {
       },
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
-          // Try to refresh token
-          final refreshed = await _refreshToken();
+          // Check if this is a refresh token request that failed
+          if (error.requestOptions.path.contains('/oauth/token/refresh')) {
+            // If refresh token request failed, clear tokens and don't retry
+            print('🚫 Refresh token failed, clearing auth data');
+            await _clearAuthData();
+            handler.next(error);
+            return;
+          }
+          
+          // Try to refresh token with concurrency control
+          final refreshed = await _refreshTokenWithConcurrencyControl();
           if (refreshed) {
             // Retry the original request
             final opts = error.requestOptions;
@@ -72,7 +86,12 @@ class ApiClient {
               return;
             } catch (e) {
               // If retry fails, proceed with original error
+              print('🔄 Retry after token refresh failed: $e');
             }
+          } else {
+            // If refresh failed, clear auth data
+            print('🚫 Token refresh failed, clearing auth data');
+            await _clearAuthData();
           }
         }
         handler.next(error);
@@ -321,12 +340,57 @@ class ApiClient {
     return prefs.getString(ApiConstants.accessTokenKey);
   }
   
+  Future<bool> _refreshTokenWithConcurrencyControl() async {
+    // If already refreshing, wait for the current refresh to complete
+    if (_isRefreshing) {
+      final completer = Completer<bool>();
+      _refreshCompleters.add(completer);
+      return completer.future;
+    }
+    
+    // Start refreshing
+    _isRefreshing = true;
+    
+    try {
+      final result = await _refreshToken();
+      
+      // Notify all waiting requests
+      for (final completer in _refreshCompleters) {
+        if (!completer.isCompleted) {
+          completer.complete(result);
+        }
+      }
+      
+      return result;
+    } catch (e) {
+      print('🚫 Token refresh error: $e');
+      
+      // Notify all waiting requests that refresh failed
+      for (final completer in _refreshCompleters) {
+        if (!completer.isCompleted) {
+          completer.complete(false);
+        }
+      }
+      
+      return false;
+    } finally {
+      // Reset refresh state
+      _isRefreshing = false;
+      _refreshCompleters.clear();
+    }
+  }
+  
   Future<bool> _refreshToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final refreshToken = prefs.getString(ApiConstants.refreshTokenKey);
       
-      if (refreshToken == null) return false;
+      if (refreshToken == null) {
+        print('🚫 No refresh token available');
+        return false;
+      }
+      
+      print('🔄 Attempting token refresh...');
       
       final response = await _dio.post(
         ApiConstants.refreshToken,
@@ -342,12 +406,28 @@ class ApiClient {
         if (data['refresh_token'] != null) {
           await prefs.setString(ApiConstants.refreshTokenKey, data['refresh_token']);
         }
+        print('✅ Token refresh successful');
         return true;
+      } else {
+        print('🚫 Token refresh failed: ${response.statusCode}');
+        return false;
       }
     } catch (e) {
-      print('Token refresh failed: $e');
+      print('🚫 Token refresh failed: $e');
+      return false;
     }
-    return false;
+  }
+  
+  Future<void> _clearAuthData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(ApiConstants.accessTokenKey);
+      await prefs.remove(ApiConstants.refreshTokenKey);
+      await prefs.remove(ApiConstants.userDataKey);
+      print('🧹 Auth data cleared');
+    } catch (e) {
+      print('❌ Error clearing auth data: $e');
+    }
   }
   
   AppException _handleError(dynamic error) {
