@@ -247,6 +247,7 @@ class ApiClient {
     PlatformFile? platformFile,
     String fieldName = 'file',
     Map<String, dynamic>? additionalFields,
+    Map<String, dynamic>? queryParameters,
     void Function(int, int)? onSendProgress,
   }) async {
     return await _requestWithFailover<T>(() async {
@@ -274,6 +275,7 @@ class ApiClient {
       return await _dio.post<T>(
         path,
         data: formData,
+        queryParameters: queryParameters,
         onSendProgress: onSendProgress,
         options: Options(
           headers: {

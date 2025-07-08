@@ -6,6 +6,15 @@ import '../../../shared/models/job_models.dart';
 
 abstract class JobsRepository {
   Future<JobResponse> createJob(CreateJobRequest request);
+  Future<JobResponse> createJobWithStructure(CreateJobWithStructureRequest request);
+  Future<UserJobsWithFilesResponse> getUserJobsWithFiles({int page = 1, int pageSize = 10});
+  Future<MoveTempFilesResponse> moveTempFilesToJob(
+    String jobId, {
+    String? videoUploadId,
+    String? transcriptUploadId,
+    String? customVideoName,
+    String? customTranscriptName,
+  });
   Future<JobResponse> getJobDetails(String jobId);
   Future<JobStatusResponse> getJobStatus(String jobId);
   Future<List<JobListItem>> getJobs({
@@ -32,6 +41,77 @@ class JobsRepositoryImpl implements JobsRepository {
       );
       
       return JobResponse.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  @override
+  Future<JobResponse> createJobWithStructure(CreateJobWithStructureRequest request) async {
+    try {
+      final response = await _apiClient.post(
+        ApiConstants.createJobWithStructure,
+        data: json.encode(request.toJson()),
+      );
+      
+      return JobResponse.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  @override
+  Future<UserJobsWithFilesResponse> getUserJobsWithFiles({int page = 1, int pageSize = 10}) async {
+    try {
+      final queryParameters = <String, dynamic>{
+        'page': page.toString(),
+        'pageSize': pageSize.toString(),
+      };
+      
+      final response = await _apiClient.get(
+        ApiConstants.userJobsWithFiles,
+        queryParameters: queryParameters,
+      );
+      
+      return UserJobsWithFilesResponse.fromJson(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  @override
+  Future<MoveTempFilesResponse> moveTempFilesToJob(
+    String jobId, {
+    String? videoUploadId,
+    String? transcriptUploadId,
+    String? customVideoName,
+    String? customTranscriptName,
+  }) async {
+    try {
+      final queryParameters = <String, dynamic>{};
+      
+      if (videoUploadId != null) {
+        queryParameters['videoUploadId'] = videoUploadId;
+      }
+      
+      if (transcriptUploadId != null) {
+        queryParameters['transcriptUploadId'] = transcriptUploadId;
+      }
+      
+      if (customVideoName != null) {
+        queryParameters['customVideoName'] = customVideoName;
+      }
+      
+      if (customTranscriptName != null) {
+        queryParameters['customTranscriptName'] = customTranscriptName;
+      }
+      
+      final response = await _apiClient.post(
+        ApiConstants.moveTempFilesToJob(jobId),
+        queryParameters: queryParameters,
+      );
+      
+      return MoveTempFilesResponse.fromJson(response.data);
     } catch (e) {
       throw _handleError(e);
     }

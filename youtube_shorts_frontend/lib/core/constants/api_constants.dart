@@ -43,9 +43,13 @@ class ApiConstants {
   // Jobs endpoints
   static const String jobsEndpoint = '/jobs';
   static const String createJobEndpoint = '$jobsEndpoint/create';
+  static const String createJobWithStructureEndpoint = '$jobsEndpoint/create-with-structure';
+  static const String userJobsWithFilesEndpoint = '$jobsEndpoint/user-jobs-with-files';
   
   // Legacy job endpoint names
   static const String createJob = createJobEndpoint;
+  static const String createJobWithStructure = createJobWithStructureEndpoint;
+  static const String userJobsWithFiles = userJobsWithFilesEndpoint;
   static const String listJobs = jobsEndpoint;
   
   // Job helper methods
@@ -53,6 +57,7 @@ class ApiConstants {
   static String getJobStatus(String jobId) => '$jobsEndpoint/$jobId/status';
   static String deleteJob(String jobId) => '$jobsEndpoint/$jobId';
   static String downloadJobVideo(String jobId) => '$jobsEndpoint/$jobId/download';
+  static String moveTempFilesToJob(String jobId) => '$jobsEndpoint/$jobId/move-temp-files';
   
   // YouTube endpoints
   static const String youtubeEndpoint = '/youtube';
@@ -74,6 +79,7 @@ class ApiConstants {
   
   // Videos endpoints (NEW)
   static const String videosEndpoint = '/videos';
+  static const String userS3VideosEndpoint = '$videosEndpoint/user-s3-videos';
   
   // Secrets endpoints (NEW)
   static const String secretsEndpoint = '/secrets';
