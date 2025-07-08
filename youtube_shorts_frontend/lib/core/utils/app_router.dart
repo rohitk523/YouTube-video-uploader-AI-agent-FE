@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
+import '../../features/auth/screens/secret_upload_screen.dart';
+import '../../features/auth/screens/secret_guard_wrapper.dart';
 import '../../features/create_short/screens/create_short_screen.dart';
 import '../../features/jobs/screens/jobs_list_screen.dart';
 import '../../features/jobs/screens/job_details_screen.dart';
@@ -17,6 +19,7 @@ class AppRouter {
   static const String splash = '/';
   static const String login = '/login';
   static const String register = '/register';
+  static const String secretUpload = '/secret-upload';
   static const String home = '/home';
   static const String createShort = '/create-short';
   static const String jobsList = '/jobs';
@@ -43,9 +46,17 @@ class AppRouter {
           settings: settings,
         );
         
+      case secretUpload:
+        return MaterialPageRoute(
+          builder: (_) => const SecretUploadScreen(),
+          settings: settings,
+        );
+        
       case home:
         return MaterialPageRoute(
-          builder: (_) => const HomeScreen(),
+          builder: (_) => const SecretGuardWrapper(
+            child: HomeScreen(),
+          ),
           settings: settings,
         );
         

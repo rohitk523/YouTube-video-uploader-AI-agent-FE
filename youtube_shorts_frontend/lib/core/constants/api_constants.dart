@@ -70,6 +70,15 @@ class ApiConstants {
   // Videos endpoints (NEW)
   static const String videosEndpoint = '/videos';
   
+  // Secrets endpoints (NEW)
+  static const String secretsEndpoint = '/secrets';
+  static const String secretsValidate = '$secretsEndpoint/validate';
+  static const String secretsUpload = '$secretsEndpoint/upload';
+  static const String secretsStatus = '$secretsEndpoint/status';
+  static const String secretsList = '$secretsEndpoint/list';
+  static const String secretsDelete = '$secretsEndpoint';
+  static const String secretsReupload = '$secretsEndpoint/reupload';
+  
   // System endpoints
   static const String healthEndpoint = '/health';
   static const String infoEndpoint = '/info';
